@@ -35,6 +35,14 @@ class Chapter:
     reward: str
 
 
+@dataclass(frozen=True)
+class CommandLesson:
+    syntax: str
+    example: str
+    what: str
+    why: str
+
+
 CHAPTERS = {
     "1": Chapter(
         key="1",
@@ -223,6 +231,83 @@ def build_tips(command: str, args: list[str]) -> list[str]:
 
     third = f"Exact answer: `{format_command(command, args)}`."
     return [first, second, third]
+
+
+def build_command_lesson(command: str, args: list[str]) -> CommandLesson:
+    return CommandLesson(
+        syntax=command_syntax(command, args),
+        example=format_command(command, args),
+        what=command_what(command, args),
+        why=command_why(command, args),
+    )
+
+
+def command_syntax(command: str, args: list[str]) -> str:
+    if command == "ls":
+        return "ls [-a] [path]" if "-a" in args else "ls [path]"
+    return {
+        "help": "help [command]",
+        "pwd": "pwd",
+        "mkdir": "mkdir path",
+        "cd": "cd path",
+        "touch": "touch path",
+        "cat": "cat path",
+        "write": 'write path "text"',
+        "append": 'append path "text"',
+        "cp": "cp source destination",
+        "mv": "mv source destination",
+        "rm": "rm path",
+        "rmdir": "rmdir path",
+        "tree": "tree [path]",
+        "find": "find name",
+        "python": "python file.py",
+    }[command]
+
+
+def command_what(command: str, args: list[str]) -> str:
+    if command == "ls" and "-a" in args:
+        return "It lists files and folders, and `-a` also reveals hidden names that start with a dot."
+    return {
+        "help": "It shows the available training-shell commands.",
+        "pwd": "It prints the path of the folder you are standing in right now.",
+        "ls": "It lists the files and folders in your current location or in a path you name.",
+        "mkdir": "It creates a new folder.",
+        "cd": "It moves you into another folder.",
+        "touch": "It creates a new empty file.",
+        "cat": "It opens a file and prints its contents.",
+        "write": "It replaces a file with one new line of text.",
+        "append": "It adds one new line to the end of a file.",
+        "cp": "It copies a file or folder to a new place.",
+        "mv": "It moves or renames a file or folder.",
+        "rm": "It removes a file.",
+        "rmdir": "It removes an empty folder.",
+        "tree": "It shows a folder and everything inside it as a full layout.",
+        "find": "It searches for a file or folder by name.",
+        "python": "It runs a Python file and shows what it prints.",
+    }[command]
+
+
+def command_why(command: str, args: list[str]) -> str:
+    if command == "ls" and "-a" in args:
+        return "Rebel intel is sometimes hidden on purpose, so this flag helps you spot secret route files."
+    return {
+        "help": "A new Rebel technician needs a map of the controls before a mission starts.",
+        "pwd": "Knowing your exact position keeps you from running to the wrong room on the base or ship.",
+        "ls": "Before the crew can act, they need to know what is present in the area.",
+        "mkdir": "Mission gear stays useful only when each team has its own organized space.",
+        "cd": "Moving to the right folder is like walking to the right room on the Falcon.",
+        "touch": "A new file gives the crew a place to register a person, note, or mission artifact.",
+        "cat": "Orders, plans, and route files only help if the crew can actually read them.",
+        "write": "Clear written orders keep the mission from drifting off course.",
+        "append": "Adding one more line lets the crew grow a plan without losing what was already written.",
+        "cp": "The Rebellion often needs a working copy so the original intel stays safe.",
+        "mv": "Moving files puts mission notes exactly where the right crew member expects them.",
+        "rm": "Removing outdated files keeps the mission room clean and less confusing.",
+        "rmdir": "Cleaning empty folders makes the ship layout easier to understand.",
+        "tree": "Commanders need to see the whole layout at once before they approve the setup.",
+        "find": "Searching by name is faster than guessing when the base starts to fill up with mission files.",
+        "python": "Running code turns written instructions into something the ship computer can actually do.",
+    }[command]
 
 
 def success_line(command: str) -> str:

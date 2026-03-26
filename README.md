@@ -6,6 +6,9 @@ It teaches command-line basics through a Star Wars story instead of abstract dri
 Every mission gives:
 
 - a short story moment
+- the command syntax
+- what the command does
+- why the command matters in the mission
 - one command to type
 - the actual result of that command inside a safe practice shell
 

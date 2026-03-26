@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Callable
 
 from terminal_quest.filesystem import FileSystemError, VirtualFileSystem
-from terminal_quest.tasks import CHAPTERS, Task, build_tasks
+from terminal_quest.tasks import CHAPTERS, Task, build_command_lesson, build_tasks
 
 
 SAVE_FILE = Path(".star_wars_terminal_quest_progress.json")
@@ -384,11 +384,15 @@ class TerminalQuestGame:
         print(line)
 
     def _show_task(self, task: Task) -> None:
-        print(
-            f"\nMission {task.number}/{len(self.tasks)}"
-            f"\n{task.name}"
-            f"\nObjective: {task.instruction}"
-        )
+        lesson = build_command_lesson(task.expected_command, task.expected_args)
+        print(f"\nMission {task.number}/{len(self.tasks)}")
+        print(task.name)
+        print("Command lesson:")
+        self._show_lesson_line("Syntax", f"`{lesson.syntax}`")
+        self._show_lesson_line("This mission", f"`{lesson.example}`")
+        self._show_lesson_line("What it does", lesson.what)
+        self._show_lesson_line("Why it matters", lesson.why)
+        self._show_lesson_line("Objective", task.instruction)
 
     def _prepare_task(self, task: Task) -> None:
         self.fs.load_snapshot(
@@ -399,6 +403,15 @@ class TerminalQuestGame:
 
     def _prompt(self) -> str:
         return f"[{self.current_index + 1:03d}] {self.fs.pwd()} $ "
+
+    def _show_lesson_line(self, label: str, text: str) -> None:
+        print(
+            textwrap.fill(
+                f"{label}: {text}",
+                width=72,
+                subsequent_indent="  ",
+            )
+        )
 
     def _handle_meta_command(self, raw: str, task: Task, tip_index: int) -> str | None:
         command = raw.lower()
