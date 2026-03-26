@@ -1,0 +1,5 @@
+Death Star Plans
+----------------
+Main weakness: thermal exhaust port
+Targeting support: required
+Protection level: extreme

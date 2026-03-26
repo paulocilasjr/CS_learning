@@ -1,0 +1,5 @@
+Escape Routes
+-------------
+1. Mos Eisley fallback
+2. Yavin 4 approach
+3. Emergency hyperspace vector
