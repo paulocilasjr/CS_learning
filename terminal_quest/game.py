@@ -25,9 +25,97 @@ class CommandResult:
     error: str = ""
 
 
+def _normalize_path(path: str) -> str:
+    cleaned = path.replace("\\", "/")
+    if cleaned == "/":
+        return "/"
+
+    absolute = cleaned.startswith("/")
+    parts: list[str] = []
+
+    for part in cleaned.split("/"):
+        if part in ("", "."):
+            continue
+        if part == "..":
+            if parts and parts[-1] != "..":
+                parts.pop()
+            elif not absolute:
+                parts.append(part)
+            continue
+        parts.append(part)
+
+    if absolute:
+        return "/" + "/".join(parts)
+    return "/".join(parts) or "."
+
+
+def normalize_args(command: str, args: list[str]) -> list[str]:
+    if command in {"help", "pwd"}:
+        return args
+
+    if command == "ls":
+        flags = sorted({arg for arg in args if arg.startswith("-")})
+        paths = [_normalize_path(arg) for arg in args if not arg.startswith("-")]
+        return flags + paths
+
+    if command in {"tree", "cd", "mkdir", "touch", "cat", "rm", "rmdir", "find", "python"}:
+        return [_normalize_path(arg) for arg in args]
+
+    if command in {"write", "append"}:
+        return [_normalize_path(args[0]), args[1]]
+
+    if command in {"cp", "mv"}:
+        return [_normalize_path(args[0]), _normalize_path(args[1])]
+
+    return args
+
+
+def run_python_program(code: str) -> str:
+    safe_builtins = {
+        "print": print,
+        "range": range,
+        "len": len,
+        "str": str,
+        "int": int,
+        "float": float,
+        "list": list,
+    }
+    globals_dict = {"__builtins__": safe_builtins}
+    buffer = io.StringIO()
+
+    try:
+        with redirect_stdout(buffer):
+            exec(code, globals_dict, {})
+    except SyntaxError as exc:
+        raise FileSystemError(f"Python says: SyntaxError on line {exc.lineno}: {exc.msg}") from exc
+    except Exception as exc:
+        raise FileSystemError(f"Python says: {exc.__class__.__name__}: {exc}") from exc
+
+    output = buffer.getvalue().rstrip("\n")
+    return output if output else "(program finished with no printed output)"
+
+
 class TutorialShell:
     def __init__(self, filesystem: VirtualFileSystem) -> None:
         self.fs = filesystem
+        self.commands: dict[str, Callable[[list[str]], str]] = {
+            "help": self._help,
+            "pwd": self._pwd,
+            "ls": self._ls,
+            "mkdir": self._mkdir,
+            "cd": self._cd,
+            "touch": self._touch,
+            "cat": self._cat,
+            "write": self._write,
+            "append": self._append,
+            "cp": self._cp,
+            "mv": self._mv,
+            "rm": self._rm,
+            "rmdir": self._rmdir,
+            "tree": self._tree,
+            "find": self._find,
+            "python": self._python,
+        }
         self.help_topics: dict[str, tuple[str, str]] = {
             "help": ("help [command]", "Show the full command list or explain one command."),
             "pwd": ("pwd", "Show the path of your current folder."),
@@ -58,6 +146,7 @@ class TutorialShell:
 
         name = parts[0].lower()
         args = parts[1:]
+
         try:
             output = self._dispatch(name, args)
             return CommandResult(raw=raw, name=name, args=args, output=output)
@@ -67,25 +156,7 @@ class TutorialShell:
             return CommandResult(raw=raw, name=name, args=args, error=f"Unexpected problem: {exc}")
 
     def _dispatch(self, name: str, args: list[str]) -> str:
-        commands: dict[str, Callable[[list[str]], str]] = {
-            "help": self._help,
-            "pwd": self._pwd,
-            "ls": self._ls,
-            "mkdir": self._mkdir,
-            "cd": self._cd,
-            "touch": self._touch,
-            "cat": self._cat,
-            "write": self._write,
-            "append": self._append,
-            "cp": self._cp,
-            "mv": self._mv,
-            "rm": self._rm,
-            "rmdir": self._rmdir,
-            "tree": self._tree,
-            "find": self._find,
-            "python": self._python,
-        }
-        handler = commands.get(name)
+        handler = self.commands.get(name)
         if handler is None:
             raise FileSystemError(f"Unknown command: {name}")
         return handler(args)
@@ -123,6 +194,7 @@ class TutorialShell:
     def _ls(self, args: list[str]) -> str:
         show_hidden = False
         path: str | None = None
+
         for arg in args:
             if arg == "-a":
                 show_hidden = True
@@ -132,6 +204,7 @@ class TutorialShell:
             if path is not None:
                 raise FileSystemError("`ls` needs at most one path.")
             path = arg
+
         items = self.fs.ls(path, show_hidden=show_hidden)
         return "\n".join(items) if items else "(empty)"
 
@@ -207,32 +280,10 @@ class TutorialShell:
             if len(args) != expected:
                 raise FileSystemError(f"`{command}` needs {expected} argument(s).")
             return
+
         low, high = expected
         if not (low <= len(args) <= high):
             raise FileSystemError(f"`{command}` needs between {low} and {high} argument(s).")
-
-
-def run_python_program(code: str) -> str:
-    safe_builtins = {
-        "print": print,
-        "range": range,
-        "len": len,
-        "str": str,
-        "int": int,
-        "float": float,
-        "list": list,
-    }
-    globals_dict = {"__builtins__": safe_builtins}
-    buffer = io.StringIO()
-    try:
-        with redirect_stdout(buffer):
-            exec(code, globals_dict, {})
-    except SyntaxError as exc:
-        raise FileSystemError(f"Python says: SyntaxError on line {exc.lineno}: {exc.msg}") from exc
-    except Exception as exc:
-        raise FileSystemError(f"Python says: {exc.__class__.__name__}: {exc}") from exc
-    output = buffer.getvalue().rstrip("\n")
-    return output if output else "(program finished with no printed output)"
 
 
 class TerminalQuestGame:
@@ -254,60 +305,77 @@ class TerminalQuestGame:
     def run(self) -> None:
         self._handle_existing_save()
         self._show_welcome()
-        previous_chapter = ""
 
+        previous_chapter = ""
         while self.current_index < len(self.tasks):
             task = self.tasks[self.current_index]
+
             if task.chapter_key != previous_chapter:
                 self._show_chapter_intro(task)
                 previous_chapter = task.chapter_key
 
-            self._prepare_task(task)
-            attempts = 0
-            tip_index = 0
-            self._show_task(task)
+            self._run_task(task)
 
-            while True:
-                raw = input(self._prompt()).strip()
-                if not raw:
-                    continue
+        self._finish_campaign()
 
-                meta_result = self._handle_meta_command(raw, task, tip_index)
-                if meta_result == "continue":
-                    continue
-                if meta_result == "exit":
-                    self._save_progress()
-                    if self.save_enabled:
-                        print("\nProgress saved. See you next time.")
-                    else:
-                        print("\nSee you next time.")
-                    return
-                if meta_result == "reset":
-                    self._prepare_task(task)
-                    continue
+    def _run_task(self, task: Task) -> None:
+        self._prepare_task(task)
+        attempts = 0
+        tip_index = 0
+        self._show_task(task)
 
-                result = self.shell.execute(raw)
-                self._show_result(result)
+        while True:
+            raw = input(self._prompt()).strip()
+            if not raw:
+                continue
 
-                if self._is_correct(task, result):
-                    earned = 3 if attempts == 0 else 2 if attempts == 1 else 1
-                    self.stars += earned
-                    print(f"\n{task.success}")
-                    print(f"Stars earned this mission: {earned}")
-                    self.current_index += 1
-                    self._save_progress()
-                    self._show_checkpoint(task)
-                    break
-
-                attempts += 1
-                tip = task.tips[min(tip_index, len(task.tips) - 1)]
-                tip_index += 1
-                print("\nNot quite yet. The practice room is reset so you can try again.")
-                print(f"Tip: {tip}")
+            meta_action = self._handle_meta_command(raw, task, tip_index)
+            if meta_action == "continue":
+                continue
+            if meta_action == "reset":
                 self._prepare_task(task)
+                continue
+            if meta_action == "exit":
+                self._exit_game()
+                return
 
+            result = self.shell.execute(raw)
+            self._show_result(result)
+
+            if self._is_correct(task, result):
+                self._complete_task(task, attempts)
+                return
+
+            attempts += 1
+            tip = task.tips[min(tip_index, len(task.tips) - 1)]
+            tip_index += 1
+            print("\nNot quite yet. The practice room is reset so you can try again.")
+            print(f"Tip: {tip}")
+            self._prepare_task(task)
+
+    def _complete_task(self, task: Task, attempts: int) -> None:
+        earned = 3 if attempts == 0 else 2 if attempts == 1 else 1
+        self.stars += earned
+
+        print(f"\n{task.success}")
+        print(f"Stars earned this mission: {earned}")
+
+        self.current_index += 1
+        self._save_progress()
+        self._show_checkpoint(task)
+
+    def _exit_game(self) -> None:
+        self._save_progress()
+        if self.save_enabled:
+            print("\nProgress saved. See you next time.")
+        else:
+            print("\nSee you next time.")
+        raise SystemExit
+
+    def _finish_campaign(self) -> None:
         if self.save_enabled and SAVE_FILE.exists():
             SAVE_FILE.unlink()
+
         print(
             "\nYou completed the current Star Wars campaign."
             f"\nTotal stars: {self.stars}"
@@ -317,9 +385,11 @@ class TerminalQuestGame:
     def _handle_existing_save(self) -> None:
         if not self.save_enabled or self.current_index > 0:
             return
+
         if self.reset_progress and SAVE_FILE.exists():
             SAVE_FILE.unlink()
             return
+
         if not SAVE_FILE.exists():
             return
 
@@ -337,6 +407,7 @@ class TerminalQuestGame:
             f"Saved progress found at mission {saved_index + 1} of {len(self.tasks)}."
             "\nType `resume` to continue or `restart` to begin from mission 1."
         )
+
         while True:
             choice = input("> ").strip().lower()
             if choice == "resume":
@@ -353,8 +424,15 @@ class TerminalQuestGame:
     def _save_progress(self) -> None:
         if not self.save_enabled:
             return
+
         SAVE_FILE.write_text(
-            json.dumps({"current_index": self.current_index, "stars": self.stars}, indent=2),
+            json.dumps(
+                {
+                    "current_index": self.current_index,
+                    "stars": self.stars,
+                },
+                indent=2,
+            ),
             encoding="utf-8",
         )
 
@@ -410,21 +488,27 @@ class TerminalQuestGame:
 
     def _handle_meta_command(self, raw: str, task: Task, tip_index: int) -> str | None:
         command = raw.lower()
+
         if command == "hint":
             tip = task.tips[min(tip_index, len(task.tips) - 1)]
             print(f"\nHint: {tip}")
             return "continue"
+
         if command == "repeat":
             self._show_task(task)
             return "continue"
+
         if command == "progress":
             self._show_progress()
             return "continue"
+
         if command == "reset":
             print("\nMission room reset.")
             return "reset"
+
         if command == "exit":
             return "exit"
+
         return None
 
     def _show_progress(self) -> None:
@@ -440,13 +524,18 @@ class TerminalQuestGame:
         if result.error:
             print(f"\n{result.error}")
             return
+
         if result.output:
             print(f"\n{result.output}")
 
     def _show_checkpoint(self, completed_task: Task) -> None:
-        next_task = self.tasks[self.current_index] if self.current_index < len(self.tasks) else None
-        if next_task is not None and next_task.chapter_key == completed_task.chapter_key:
+        if self.current_index >= len(self.tasks):
             return
+
+        next_task = self.tasks[self.current_index]
+        if next_task.chapter_key == completed_task.chapter_key:
+            return
+
         completed_chapter = CHAPTERS[completed_task.chapter_key]
         print(f"Chapter complete: {completed_chapter.name}")
         print(f"Reward unlocked: {completed_chapter.reward}")
@@ -455,43 +544,19 @@ class TerminalQuestGame:
     def _is_correct(self, task: Task, result: CommandResult) -> bool:
         if result.error or result.name != task.expected_command:
             return False
-        return normalize_args(task.expected_command, result.args) == normalize_args(
-            task.expected_command, task.expected_args
-        )
+
+        actual = normalize_args(task.expected_command, result.args)
+        expected = normalize_args(task.expected_command, task.expected_args)
+        return actual == expected
 
 
-def normalize_args(command: str, args: list[str]) -> list[str]:
-    if command in {"help", "pwd"}:
-        return args
-    if command == "ls":
-        flags = sorted({arg for arg in args if arg.startswith("-")})
-        paths = [_normalize_path(arg) for arg in args if not arg.startswith("-")]
-        return flags + paths
-    if command in {"tree", "cd", "mkdir", "touch", "cat", "rm", "rmdir", "find", "python"}:
-        return [_normalize_path(arg) for arg in args]
-    if command in {"write", "append"}:
-        return [_normalize_path(args[0]), args[1]]
-    if command in {"cp", "mv"}:
-        return [_normalize_path(args[0]), _normalize_path(args[1])]
-    return args
+def main() -> None:
+    game = TerminalQuestGame()
+    try:
+        game.run()
+    except SystemExit:
+        return
 
 
-def _normalize_path(path: str) -> str:
-    cleaned = path.replace("\\", "/")
-    if cleaned == "/":
-        return "/"
-    absolute = cleaned.startswith("/")
-    parts: list[str] = []
-    for part in cleaned.split("/"):
-        if part in ("", "."):
-            continue
-        if part == "..":
-            if parts and parts[-1] != "..":
-                parts.pop()
-            elif not absolute:
-                parts.append(part)
-            continue
-        parts.append(part)
-    if absolute:
-        return "/" + "/".join(parts)
-    return "/".join(parts) or "."
+if __name__ == "__main__":
+    main()
