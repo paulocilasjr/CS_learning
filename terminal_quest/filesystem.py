@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, Union
+from typing import Dict, TypeAlias
 
 
 class FileSystemError(Exception):
@@ -22,18 +22,16 @@ class VirtualFile:
 class VirtualDirectory:
     name: str
     parent: "VirtualDirectory | None" = None
-    children: Dict[str, "Node"] = field(default_factory=dict)
+    children: dict[str, "Node"] = field(default_factory=dict)
 
     def clone(self, parent: "VirtualDirectory | None" = None) -> "VirtualDirectory":
         copied = VirtualDirectory(name=self.name, parent=parent)
         for name in sorted(self.children):
-            child = self.children[name]
-            child_copy = child.clone(copied)
-            copied.children[name] = child_copy
+            copied.children[name] = self.children[name].clone(copied)
         return copied
 
 
-Node = Union[VirtualFile, VirtualDirectory]
+Node: TypeAlias = VirtualFile | VirtualDirectory
 
 
 class VirtualFileSystem:
@@ -41,19 +39,16 @@ class VirtualFileSystem:
         self.root = VirtualDirectory(name="")
         self.cwd = self.root
 
-    def load_snapshot(
-        self,
-        *,
-        cwd: str,
-        dirs: list[str],
-        files: dict[str, str],
-    ) -> None:
+    def load_snapshot(self, *, cwd: str, dirs: list[str], files: dict[str, str]) -> None:
         self.root = VirtualDirectory(name="")
         self.cwd = self.root
+
         for path in sorted(dirs, key=self._path_depth):
             self.mkdir(path)
+
         for path, content in sorted(files.items()):
             self.write_file(path, content)
+
         self.cwd = self._expect_directory(self.resolve(cwd))
 
     def snapshot(self) -> dict[str, object]:
@@ -71,7 +66,11 @@ class VirtualFileSystem:
                     files[child_path] = child.content
 
         walk(self.root)
-        return {"cwd": self.pwd(), "dirs": dirs, "files": files}
+        return {
+            "cwd": self.pwd(),
+            "dirs": dirs,
+            "files": files,
+        }
 
     def pwd(self) -> str:
         return self.path_for(self.cwd)
@@ -81,69 +80,43 @@ class VirtualFileSystem:
             return self.cwd
 
         current: Node = self.root if path.startswith("/") else (start or self.cwd)
-        parts = path.split("/")
-        for part in parts:
+        for part in path.split("/"):
             if part in ("", "."):
                 continue
             if part == "..":
                 if isinstance(current, VirtualDirectory) and current.parent is not None:
                     current = current.parent
                 continue
-            if not isinstance(current, VirtualDirectory):
-                raise FileSystemError(f"`{self.path_for(current)}` is not a directory.")
-            child = current.children.get(part)
-            if child is None:
-                raise FileSystemError(f"Path not found: {path}")
-            current = child
+            current = self._resolve_child(current, part, original_path=path)
         return current
 
     def mkdir(self, path: str) -> None:
         parent, name = self._parent_and_name(path)
-        if name in parent.children:
-            raise FileSystemError(f"`{name}` already exists.")
+        self._ensure_name_available(parent, name)
         parent.children[name] = VirtualDirectory(name=name, parent=parent)
 
     def touch(self, path: str) -> None:
-        parent, name = self._parent_and_name(path)
-        existing = parent.children.get(name)
-        if existing is None:
-            parent.children[name] = VirtualFile(name=name, content="", parent=parent)
-            return
-        if isinstance(existing, VirtualDirectory):
-            raise FileSystemError(f"`{name}` is a directory, not a file.")
+        file_node = self._get_or_create_file(path)
+        if isinstance(file_node, VirtualDirectory):
+            raise FileSystemError(f"`{file_node.name}` is a directory, not a file.")
 
     def read_file(self, path: str) -> str:
-        file_node = self._expect_file(self.resolve(path))
-        return file_node.content
+        return self._expect_file(self.resolve(path)).content
 
     def write_file(self, path: str, text: str) -> None:
-        parent, name = self._parent_and_name(path)
-        existing = parent.children.get(name)
-        if existing is None:
-            parent.children[name] = VirtualFile(name=name, content=text, parent=parent)
-            return
-        if isinstance(existing, VirtualDirectory):
-            raise FileSystemError(f"`{name}` is a directory, not a file.")
-        existing.content = text
+        file_node = self._get_or_create_file(path)
+        file_node.content = text
 
     def append_file(self, path: str, text: str) -> None:
-        parent, name = self._parent_and_name(path)
-        existing = parent.children.get(name)
-        if existing is None:
-            parent.children[name] = VirtualFile(name=name, content=text, parent=parent)
-            return
-        if isinstance(existing, VirtualDirectory):
-            raise FileSystemError(f"`{name}` is a directory, not a file.")
-        if existing.content:
-            existing.content = f"{existing.content}\n{text}"
-        else:
-            existing.content = text
+        file_node = self._get_or_create_file(path)
+        file_node.content = f"{file_node.content}\n{text}" if file_node.content else text
 
     def ls(self, path: str | None = None, *, show_hidden: bool = False) -> list[str]:
         target = self.resolve(path or ".")
         if isinstance(target, VirtualFile):
             return [target.name]
-        items = []
+
+        items: list[str] = []
         for name in sorted(target.children):
             if not show_hidden and name.startswith("."):
                 continue
@@ -157,32 +130,17 @@ class VirtualFileSystem:
 
     def remove_file(self, path: str) -> None:
         file_node = self._expect_file(self.resolve(path))
-        if file_node.parent is None:
-            raise FileSystemError("You cannot remove the root folder.")
-        del file_node.parent.children[file_node.name]
+        self._remove_node(file_node, root_message="You cannot remove the root folder.")
 
     def remove_directory(self, path: str) -> None:
         directory = self._expect_directory(self.resolve(path))
-        if directory.parent is None:
-            raise FileSystemError("You cannot remove the root folder.")
         if directory.children:
             raise FileSystemError("That folder is not empty yet.")
-        del directory.parent.children[directory.name]
+        self._remove_node(directory, root_message="You cannot remove the root folder.")
 
     def copy(self, source: str, destination: str) -> None:
         source_node = self.resolve(source)
-        destination_exists = self._try_resolve(destination)
-        if destination_exists is not None:
-            destination_dir = self._expect_directory(destination_exists)
-            new_name = source_node.name
-            if new_name in destination_dir.children:
-                raise FileSystemError(f"`{new_name}` already exists in `{self.path_for(destination_dir)}`.")
-            destination_dir.children[new_name] = source_node.clone(destination_dir)
-            return
-
-        parent, new_name = self._parent_and_name(destination)
-        if new_name in parent.children:
-            raise FileSystemError(f"`{new_name}` already exists.")
+        parent, new_name = self._resolve_destination(destination, source_node.name)
         clone = source_node.clone(parent)
         clone.name = new_name
         parent.children[new_name] = clone
@@ -191,25 +149,13 @@ class VirtualFileSystem:
         source_node = self.resolve(source)
         if source_node is self.root:
             raise FileSystemError("You cannot move the root folder.")
+
         assert source_node.parent is not None
+        parent, new_name = self._resolve_destination(destination, source_node.name)
 
-        destination_exists = self._try_resolve(destination)
-        if destination_exists is not None:
-            destination_dir = self._expect_directory(destination_exists)
-            if isinstance(source_node, VirtualDirectory) and self._is_inside(destination_dir, source_node):
-                raise FileSystemError("You cannot move a folder into itself.")
-            if source_node.name in destination_dir.children:
-                raise FileSystemError(f"`{source_node.name}` already exists there.")
-            del source_node.parent.children[source_node.name]
-            source_node.parent = destination_dir
-            destination_dir.children[source_node.name] = source_node
-            return
-
-        parent, new_name = self._parent_and_name(destination)
         if isinstance(source_node, VirtualDirectory) and self._is_inside(parent, source_node):
             raise FileSystemError("You cannot move a folder into itself.")
-        if new_name in parent.children:
-            raise FileSystemError(f"`{new_name}` already exists.")
+
         del source_node.parent.children[source_node.name]
         source_node.name = new_name
         source_node.parent = parent
@@ -239,12 +185,65 @@ class VirtualFileSystem:
     def path_for(self, node: Node) -> str:
         if node is self.root:
             return "/"
-        parts = []
+
+        parts: list[str] = []
         current: Node | None = node
         while current is not None and current is not self.root:
             parts.append(current.name)
             current = current.parent
         return "/" + "/".join(reversed(parts))
+
+    def _resolve_child(self, current: Node, part: str, *, original_path: str) -> Node:
+        directory = self._expect_directory(current)
+        child = directory.children.get(part)
+        if child is None:
+            raise FileSystemError(f"Path not found: {original_path}")
+        return child
+
+    def _get_or_create_file(self, path: str) -> VirtualFile:
+        parent, name = self._parent_and_name(path)
+        existing = parent.children.get(name)
+
+        if existing is None:
+            file_node = VirtualFile(name=name, parent=parent)
+            parent.children[name] = file_node
+            return file_node
+
+        if isinstance(existing, VirtualDirectory):
+            raise FileSystemError(f"`{name}` is a directory, not a file.")
+
+        return existing
+
+    def _resolve_destination(self, destination: str, default_name: str) -> tuple[VirtualDirectory, str]:
+        existing = self._try_resolve(destination)
+        if existing is not None:
+            destination_dir = self._expect_directory(existing)
+            self._ensure_name_available(
+                destination_dir,
+                default_name,
+                message=f"`{default_name}` already exists in `{self.path_for(destination_dir)}`.",
+            )
+            return destination_dir, default_name
+
+        parent, new_name = self._parent_and_name(destination)
+        self._ensure_name_available(parent, new_name)
+        return parent, new_name
+
+    def _remove_node(self, node: Node, *, root_message: str) -> None:
+        parent = node.parent
+        if parent is None:
+            raise FileSystemError(root_message)
+        del parent.children[node.name]
+
+    def _ensure_name_available(
+        self,
+        parent: VirtualDirectory,
+        name: str,
+        *,
+        message: str | None = None,
+    ) -> None:
+        if name in parent.children:
+            raise FileSystemError(message or f"`{name}` already exists.")
 
     def _tree_lines(self, node: Node, lines: list[str], prefix: str) -> None:
         if node is self.root:
@@ -270,6 +269,7 @@ class VirtualFileSystem:
         cleaned = path.rstrip("/")
         if cleaned in ("", "/"):
             raise FileSystemError("That path needs a name at the end.")
+
         parts = cleaned.split("/")
         name = parts[-1]
         parent_path = "/".join(parts[:-1]) or ("." if not cleaned.startswith("/") else "/")
@@ -294,5 +294,6 @@ class VirtualFileSystem:
             current = current.parent
         return False
 
-    def _path_depth(self, path: str) -> int:
+    @staticmethod
+    def _path_depth(path: str) -> int:
         return len([part for part in path.split("/") if part])
