@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from terminal_quest.filesystem import VirtualFileSystem
 
@@ -36,6 +37,17 @@ class Chapter:
     reward: str
 
 
+@dataclass(frozen=True)
+class TaskSpec:
+    name: str
+    lesson: str
+    instruction: str
+    command: str
+    args: tuple[str, ...] = ()
+    success: str | None = None
+    tips: list[str] | None = None
+
+
 CHAPTERS = {
     "1": Chapter(
         key="1",
@@ -67,85 +79,379 @@ CHAPTERS = {
 }
 
 
-def build_tasks() -> list[Task]:
-    builder = CampaignBuilder()
-    builder.set_world(
-        cwd="/galaxy/rebel_base",
-        dirs=[
-            "/galaxy",
-            "/galaxy/rebel_base",
-            "/galaxy/rebel_base/archive",
-            "/galaxy/rebel_base/briefing_room",
-            "/galaxy/rebel_base/hangar",
-            "/galaxy/rebel_base/hangar/millennium_falcon",
-            "/galaxy/rebel_base/hangar/millennium_falcon/cargo",
-            "/galaxy/rebel_base/hangar/millennium_falcon/crew",
-        ],
-        files={
-            "/galaxy/rebel_base/briefing_room/mission_briefing.txt": (
-                "Leia's Message\n"
-                "--------------\n"
-                "Han parked the Millennium Falcon inside the hangar.\n"
-                "To reach it in one move, type:\n"
-                "cd hangar/millennium_falcon\n"
-                "The ship is carrying the next clue."
+WORLD = {
+    "cwd": "/galaxy/rebel_base",
+    "dirs": [
+        "/galaxy",
+        "/galaxy/rebel_base",
+        "/galaxy/rebel_base/archive",
+        "/galaxy/rebel_base/briefing_room",
+        "/galaxy/rebel_base/hangar",
+        "/galaxy/rebel_base/hangar/millennium_falcon",
+        "/galaxy/rebel_base/hangar/millennium_falcon/cargo",
+        "/galaxy/rebel_base/hangar/millennium_falcon/crew",
+    ],
+    "files": {
+        "/galaxy/rebel_base/briefing_room/mission_briefing.txt": (
+            "Leia's Message\n"
+            "--------------\n"
+            "Han parked the Millennium Falcon inside the hangar.\n"
+            "To reach it in one move, type:\n"
+            "cd hangar/millennium_falcon\n"
+            "The ship is carrying the next clue."
+        ),
+        "/galaxy/rebel_base/briefing_room/report_terminal.txt": (
+            "Leia's Reply\n"
+            "------------\n"
+            "You brought the crew list, the rescue room, and the plans together.\n"
+            "The Falcon is ready.\n"
+            "Next chapter: a jump toward Kharis Moon."
+        ),
+        "/galaxy/rebel_base/archive/death_star_plans.txt": (
+            "Death Star Study Copy\n"
+            "---------------------\n"
+            "Weak point: thermal exhaust port\n"
+            "Targeting support: required\n"
+            "Leia's note:\n"
+            "Return to /galaxy/rebel_base/briefing_room\n"
+            "Then read report_terminal.txt for the next chapter."
+        ),
+        "/galaxy/rebel_base/hangar/millennium_falcon/.escape_routes.txt": (
+            "R2-D2's Hidden Route Note\n"
+            "------------------------\n"
+            "This file was hidden with a dot so enemies would miss it.\n"
+            "The Falcon needs a new planning room.\n"
+            "Create a folder named training_bay."
+        ),
+        "/galaxy/rebel_base/hangar/millennium_falcon/faulty_hyperdrive_note.txt": (
+            "Reminder: hyperdrive calibration is still unstable."
+        ),
+        "/galaxy/rebel_base/hangar/millennium_falcon/cargo/coaxium_crate.txt": (
+            "Coaxium reserve locked and sealed."
+        ),
+        "/galaxy/rebel_base/hangar/millennium_falcon/cargo/med_kit.txt": (
+            "Field med kit ready."
+        ),
+        "/galaxy/rebel_base/hangar/millennium_falcon/cargo/tool_box.txt": (
+            "Tool box stocked with repair gear."
+        ),
+        "/galaxy/rebel_base/hangar/millennium_falcon/crew/han_solo.txt": (
+            "Han Solo\nCaptain of the Millennium Falcon"
+        ),
+        "/galaxy/rebel_base/hangar/millennium_falcon/crew/chewbacca.txt": (
+            "Chewbacca\nCo-pilot and mechanic"
+        ),
+        "/galaxy/rebel_base/hangar/millennium_falcon/crew/leia_organa.txt": (
+            "Leia Organa\nMission commander"
+        ),
+        "/galaxy/rebel_base/hangar/millennium_falcon/crew/luke_skywalker.txt": (
+            "Luke Skywalker\nPilot in training"
+        ),
+        "/galaxy/rebel_base/hangar/millennium_falcon/crew/r2_d2.txt": (
+            "R2-D2\nAstromech carrying mission data"
+        ),
+    },
+}
+
+
+CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
+    "1": [
+        TaskSpec(
+            name="Check Your Coordinates",
+            lesson=(
+                "The Rebel base is huge and new technicians get lost fast. Before Leia trusts you "
+                "with the mission, she wants you to ask the computer where you are standing. "
+                "The special word is `pwd`, short for 'print working directory'. It shows your "
+                "current location, like a glowing map on the wall."
             ),
-            "/galaxy/rebel_base/briefing_room/report_terminal.txt": (
-                "Leia's Reply\n"
-                "------------\n"
-                "You brought the crew list, the rescue room, and the plans together.\n"
-                "The Falcon is ready.\n"
-                "Next chapter: a jump toward Kharis Moon."
+            instruction="Use `pwd` to reveal your current location.",
+            command="pwd",
+            success="Leia sees the coordinates and knows you can read the map.",
+        ),
+        TaskSpec(
+            name="Scan The Base",
+            lesson=(
+                "From here you can see several rooms, but you need the computer to name them. "
+                "The word `ls` means 'list'. It shows what is present in the current place, "
+                "the same way a hangar screen lists ships and doors."
             ),
-            "/galaxy/rebel_base/archive/death_star_plans.txt": (
-                "Death Star Study Copy\n"
-                "---------------------\n"
-                "Weak point: thermal exhaust port\n"
-                "Targeting support: required\n"
-                "Leia's note:\n"
-                "Return to /galaxy/rebel_base/briefing_room\n"
-                "Then read report_terminal.txt for the next chapter."
+            instruction="Use `ls` to list the rooms around you.",
+            command="ls",
+            success="The base layout appears, and the first mystery starts to make sense.",
+        ),
+        TaskSpec(
+            name="Read The Briefing",
+            lesson=(
+                "Princess Leia left her orders inside a file named "
+                "`briefing_room/mission_briefing.txt`. To crack a text file open, rebels use "
+                "the word `cat`, short for 'concatenate'. In this game, `cat` lets you read "
+                "what is inside a file. Type the special word and the file name to see Leia's message."
             ),
-            "/galaxy/rebel_base/hangar/millennium_falcon/.escape_routes.txt": (
-                "R2-D2's Hidden Route Note\n"
-                "------------------------\n"
-                "This file was hidden with a dot so enemies would miss it.\n"
-                "The Falcon needs a new planning room.\n"
-                "Create a folder named training_bay."
+            instruction="Read Leia's mission file.",
+            command="cat",
+            args=("briefing_room/mission_briefing.txt",),
+            success="Leia's message spills across the screen and points you toward the Falcon.",
+        ),
+        TaskSpec(
+            name="Reach The Falcon Through The Hangar",
+            lesson=(
+                "Leia's note reveals a tricky idea: the Falcon is not directly under the base. "
+                "It is inside the `hangar`, and the `hangar` contains `millennium_falcon`. "
+                "The travel word is `cd`, short for 'change directory'. To move through rooms "
+                "inside rooms, write the full path with a slash: `hangar/millennium_falcon`."
             ),
-            "/galaxy/rebel_base/hangar/millennium_falcon/faulty_hyperdrive_note.txt": (
-                "Reminder: hyperdrive calibration is still unstable."
+            instruction="Use `cd` with the full path to reach the Falcon.",
+            command="cd",
+            args=("hangar/millennium_falcon",),
+            success="The ship ramp lowers. You found the Falcon by following the full path.",
+            tips=[
+                "The Falcon is not directly here. It is inside `hangar`, so your path must include both rooms.",
+                "`cd` means change directory, and the one-jump path is `hangar/millennium_falcon`.",
+                "Exact answer: `cd hangar/millennium_falcon`.",
+            ],
+        ),
+        TaskSpec(
+            name="Crew Manifest",
+            lesson=(
+                "Han wants a crew check before the ramp closes. You can use `ls` again, but this "
+                "time point it at the `crew` folder. When `ls` is followed by a path, it lists "
+                "what is inside that specific place without moving you there."
             ),
-            "/galaxy/rebel_base/hangar/millennium_falcon/cargo/coaxium_crate.txt": (
-                "Coaxium reserve locked and sealed."
+            instruction="List the files inside `crew`.",
+            command="ls",
+            args=("crew",),
+            success="Han gets the crew manifest and knows exactly who is aboard.",
+        ),
+        TaskSpec(
+            name="Reveal Hidden Routes",
+            lesson=(
+                "R2-D2 has spotted a hidden route file, but normal `ls` will skip secret names "
+                "that begin with a dot. Add the flag `-a` after `ls` to show everything, even "
+                "hidden files. Flags are little extra instructions you attach to a command."
             ),
-            "/galaxy/rebel_base/hangar/millennium_falcon/cargo/med_kit.txt": (
-                "Field med kit ready."
+            instruction="Use `ls -a` to reveal the hidden route file.",
+            command="ls",
+            args=("-a",),
+            success="A hidden file appears. R2-D2 whistles like he knew it was there all along.",
+        ),
+    ],
+    "2": [
+        TaskSpec(
+            name="Read The Escape Routes",
+            lesson=(
+                "Now that the hidden file is visible, you can read it with `cat`. R2-D2 says "
+                "the file `.escape_routes.txt` contains the next step of the mission."
             ),
-            "/galaxy/rebel_base/hangar/millennium_falcon/cargo/tool_box.txt": (
-                "Tool box stocked with repair gear."
+            instruction="Open `.escape_routes.txt`.",
+            command="cat",
+            args=(".escape_routes.txt",),
+            success="The hidden note opens, and the Falcon's next problem is finally clear.",
+        ),
+        TaskSpec(
+            name="Build The Training Bay",
+            lesson=(
+                "The hidden route file says the crew needs a new planning room. To build a new "
+                "room in computer space, use `mkdir`, short for 'make directory'. A directory "
+                "is just another word for folder."
             ),
-            "/galaxy/rebel_base/hangar/millennium_falcon/crew/han_solo.txt": (
-                "Han Solo\nCaptain of the Millennium Falcon"
+            instruction="Create `training_bay`.",
+            command="mkdir",
+            args=("training_bay",),
+            success="A brand-new planning room appears inside the Falcon.",
+        ),
+        TaskSpec(
+            name="Create The Rescue Team Room",
+            lesson=(
+                "Luke wants a smaller room inside the new bay just for the rescue plan. "
+                "`mkdir` can also build a room inside another room when you give it a path like "
+                "`training_bay/rescue_team`."
             ),
-            "/galaxy/rebel_base/hangar/millennium_falcon/crew/chewbacca.txt": (
-                "Chewbacca\nCo-pilot and mechanic"
+            instruction="Create the `rescue_team` folder inside `training_bay`.",
+            command="mkdir",
+            args=("training_bay/rescue_team",),
+            success="The rescue team room is built and waiting for names and plans.",
+        ),
+        TaskSpec(
+            name="Add Obi-Wan To The Roster",
+            lesson=(
+                "The rescue team needs its first name on the board. To make a new empty file, "
+                "use `touch`. Think of it like placing a blank data card into the folder so the "
+                "team can use it later."
             ),
-            "/galaxy/rebel_base/hangar/millennium_falcon/crew/leia_organa.txt": (
-                "Leia Organa\nMission commander"
+            instruction="Create `training_bay/rescue_team/obi_wan.txt`.",
+            command="touch",
+            args=("training_bay/rescue_team/obi_wan.txt",),
+            success="Obi-Wan is now written into the rescue team's records.",
+        ),
+        TaskSpec(
+            name="Move The Hyperdrive Note",
+            lesson=(
+                "Chewbacca finds a faulty hyperdrive note lying in the middle of the Falcon. "
+                "The command `mv` means move. It picks something up from one place and drops it "
+                "somewhere else."
             ),
-            "/galaxy/rebel_base/hangar/millennium_falcon/crew/luke_skywalker.txt": (
-                "Luke Skywalker\nPilot in training"
+            instruction="Move `faulty_hyperdrive_note.txt` into `training_bay`.",
+            command="mv",
+            args=("faulty_hyperdrive_note.txt", "training_bay/faulty_hyperdrive_note.txt"),
+            success="Chewbacca grunts happily. The messy note is finally where it belongs.",
+        ),
+        TaskSpec(
+            name="Inspect The Training Bay",
+            lesson=(
+                "Before Leia approves the bay, you need to show her what is inside it. Use `ls` "
+                "with the path `training_bay` so the ship computer lists that room for you."
             ),
-            "/galaxy/rebel_base/hangar/millennium_falcon/crew/r2_d2.txt": (
-                "R2-D2\nAstromech carrying mission data"
+            instruction="List the contents of `training_bay`.",
+            command="ls",
+            args=("training_bay",),
+            success="Leia can now see the rescue room and the repair note in one glance.",
+        ),
+        TaskSpec(
+            name="Copy The Plans",
+            lesson=(
+                "The original Death Star plans must stay safe in the archive, so the rescue team "
+                "needs a copy, not the only version. The command `cp` means copy. The tricky part "
+                "is the path: the archive is two levels above the Falcon, so you must walk back "
+                "with `../../` before entering `archive`."
             ),
-        },
-    )
-    add_chapter_1(builder)
-    add_chapter_2(builder)
-    add_chapter_3(builder)
-    return builder.tasks
+            instruction="Copy the archived plans into `training_bay/rescue_team/death_star_plans.txt`.",
+            command="cp",
+            args=("../../archive/death_star_plans.txt", "training_bay/rescue_team/death_star_plans.txt"),
+            success="A safe study copy lands in the rescue room while the archive stays protected.",
+            tips=[
+                "The archive is above the Falcon, so you must walk back two levels with `../../` before entering `archive`.",
+                "Use `cp source destination`, and the source begins with `../../archive/death_star_plans.txt`.",
+                "Exact answer: `cp ../../archive/death_star_plans.txt training_bay/rescue_team/death_star_plans.txt`.",
+            ],
+        ),
+    ],
+    "3": [
+        TaskSpec(
+            name="Find The Plans",
+            lesson=(
+                "The Falcon is getting crowded, and guessing where files landed is risky. "
+                "The command `find` searches by name, like asking every droid in the ship "
+                "whether it has seen a file."
+            ),
+            instruction="Search for `death_star_plans.txt`.",
+            command="find",
+            args=("death_star_plans.txt",),
+            success="The search points straight to the plans, and no one wastes time guessing.",
+        ),
+        TaskSpec(
+            name="Inspect The Full Bay",
+            lesson=(
+                "Leia wants the whole layout, not just one room at a time. The command `tree` "
+                "draws the folder like a branching map so you can see every room and file underneath it."
+            ),
+            instruction="Show the full tree for `training_bay`.",
+            command="tree",
+            args=("training_bay",),
+            success="The Falcon's planning area now looks like a clean tactical map.",
+        ),
+        TaskSpec(
+            name="Enter The Rescue Team Room",
+            lesson=(
+                "Now you need to step into the rescue team room itself. `cd` changes your location, "
+                "and here the path is relative to where you already are: `training_bay/rescue_team`."
+            ),
+            instruction="Move into `training_bay/rescue_team`.",
+            command="cd",
+            args=("training_bay/rescue_team",),
+            success="You step into the rescue room, right where the copied plans are waiting.",
+        ),
+        TaskSpec(
+            name="Check The Final Kit",
+            lesson=(
+                "Inside the rescue team room, Han wants one last quick glance at what is ready. "
+                "A plain `ls` works because you are already standing in the correct place."
+            ),
+            instruction="List the files in the rescue team room.",
+            command="ls",
+            success="The final kit is on screen: one roster file and one plan file, ready to go.",
+        ),
+        TaskSpec(
+            name="Read The Plans",
+            lesson=(
+                "The copied plans are finally in the right room. Use `cat` again to read the file "
+                "and see Leia's final instructions for this chapter."
+            ),
+            instruction="Read `death_star_plans.txt`.",
+            command="cat",
+            args=("death_star_plans.txt",),
+            success="The plans reveal the weakness and tell you exactly where to report.",
+        ),
+        TaskSpec(
+            name="Return To Leia",
+            lesson=(
+                "The plans say it is time to report back. `cd` can also take a full path that "
+                "starts with `/`. An absolute path is like using the full galaxy address instead "
+                "of guessing from where you stand."
+            ),
+            instruction="Use a full path to return to `/galaxy/rebel_base/briefing_room`.",
+            command="cd",
+            args=("/galaxy/rebel_base/briefing_room",),
+            success="You return to Leia's room in one clean jump across the base.",
+            tips=[
+                "This time Leia wants the full galaxy address, so your path must start with `/`.",
+                "Use `cd` with the absolute path `/galaxy/rebel_base/briefing_room`.",
+                "Exact answer: `cd /galaxy/rebel_base/briefing_room`.",
+            ],
+        ),
+        TaskSpec(
+            name="Open Leia's Reply",
+            lesson=(
+                "Leia left one more message waiting in `report_terminal.txt`. You already know the "
+                "special reading word: `cat`. Use it one more time to open the reply and close "
+                "this chapter of the adventure."
+            ),
+            instruction="Read `report_terminal.txt`.",
+            command="cat",
+            args=("report_terminal.txt",),
+            success="Leia smiles. This chapter is complete, and the next world is waiting.",
+        ),
+    ],
+}
+
+
+COMMAND_TIPS = {
+    "help": "If the Rebel console feels strange, use `help` to see the commands you can speak to it.",
+    "pwd": "Use `pwd` to ask the base map where you are standing.",
+    "ls": "Use `ls` to make the computer list what it can see.",
+    "mkdir": "Use `mkdir` to build a new room or folder.",
+    "cd": "Use `cd` to travel to another room.",
+    "touch": "Use `touch` to place a new empty data card into a folder.",
+    "cat": "Use `cat` to crack open a file and read its text.",
+    "write": "Use `write file \"text\"` to replace a file with one line of text.",
+    "append": "Use `append file \"text\"` to add a new line to a file.",
+    "cp": "Use `cp old new` to make a safe copy while keeping the original.",
+    "mv": "Use `mv old new` to move a file into its proper place.",
+    "rm": "Use `rm` to remove a file.",
+    "rmdir": "Use `rmdir` to remove an empty folder.",
+    "tree": "Use `tree` to draw the whole folder map.",
+    "find": "Use `find name` to search the ship by file name.",
+    "python": "Use `python file.py` to run a Python program.",
+}
+
+
+SUCCESS_LINES = {
+    "help": "The command guide opens in your console.",
+    "pwd": "You checked your current coordinates.",
+    "ls": "You scanned the area successfully.",
+    "mkdir": "A new Rebel workspace is ready.",
+    "cd": "You moved to the right place.",
+    "touch": "The file is ready.",
+    "cat": "The report is now on screen.",
+    "write": "The file has fresh orders.",
+    "append": "You added a new line to the report.",
+    "cp": "The copy is in place.",
+    "mv": "The item has been moved.",
+    "rm": "The file is gone.",
+    "rmdir": "The empty folder is gone too.",
+    "tree": "The full layout is visible.",
+    "find": "You tracked it down.",
+    "python": "The program ran.",
+}
 
 
 class CampaignBuilder:
@@ -160,60 +466,52 @@ class CampaignBuilder:
     def use_chapter(self, key: str) -> None:
         self.current_chapter = CHAPTERS[key]
 
-    def add(
-        self,
-        name: str,
-        lesson: str,
-        instruction: str,
-        command: str,
-        *args: str,
-        success: str | None = None,
-        tips: list[str] | None = None,
-    ) -> None:
+    def add_task_spec(self, spec: TaskSpec) -> None:
         snapshot = self.fs.snapshot()
         chapter = self.current_chapter
+        args = list(spec.args)
+
         self.tasks.append(
             Task(
                 number=len(self.tasks) + 1,
                 chapter_key=chapter.key,
                 chapter_name=chapter.name,
                 chapter_intro=chapter.intro,
-                name=name,
-                lesson=lesson,
-                instruction=instruction,
-                expected_command=command,
-                expected_args=list(args),
-                tips=tips or build_tips(command, list(args)),
-                success=success or success_line(command),
-                scenario=Scenario(
-                    cwd=snapshot["cwd"],  # type: ignore[arg-type]
-                    dirs=list(snapshot["dirs"]),  # type: ignore[arg-type]
-                    files=dict(snapshot["files"]),  # type: ignore[arg-type]
-                ),
+                name=spec.name,
+                lesson=spec.lesson,
+                instruction=spec.instruction,
+                expected_command=spec.command,
+                expected_args=args,
+                tips=spec.tips or build_tips(spec.command, args),
+                success=spec.success or success_line(spec.command),
+                scenario=build_scenario(snapshot),
             )
         )
-        apply_expected(self.fs, command, list(args))
+        apply_expected(self.fs, spec.command, args)
+
+
+def build_tasks() -> list[Task]:
+    builder = CampaignBuilder()
+    builder.set_world(**WORLD)
+
+    for chapter_key in ("1", "2", "3"):
+        builder.use_chapter(chapter_key)
+        for spec in CHAPTER_TASKS[chapter_key]:
+            builder.add_task_spec(spec)
+
+    return builder.tasks
+
+
+def build_scenario(snapshot: dict[str, Any]) -> Scenario:
+    return Scenario(
+        cwd=str(snapshot["cwd"]),
+        dirs=list(snapshot["dirs"]),
+        files=dict(snapshot["files"]),
+    )
 
 
 def build_tips(command: str, args: list[str]) -> list[str]:
-    first = {
-        "help": "If the Rebel console feels strange, use `help` to see the commands you can speak to it.",
-        "pwd": "Use `pwd` to ask the base map where you are standing.",
-        "ls": "Use `ls` to make the computer list what it can see.",
-        "mkdir": "Use `mkdir` to build a new room or folder.",
-        "cd": "Use `cd` to travel to another room.",
-        "touch": "Use `touch` to place a new empty data card into a folder.",
-        "cat": "Use `cat` to crack open a file and read its text.",
-        "write": "Use `write file \"text\"` to replace a file with one line of text.",
-        "append": "Use `append file \"text\"` to add a new line to a file.",
-        "cp": "Use `cp old new` to make a safe copy while keeping the original.",
-        "mv": "Use `mv old new` to move a file into its proper place.",
-        "rm": "Use `rm` to remove a file.",
-        "rmdir": "Use `rmdir` to remove an empty folder.",
-        "tree": "Use `tree` to draw the whole folder map.",
-        "find": "Use `find name` to search the ship by file name.",
-        "python": "Use `python file.py` to run a Python program.",
-    }[command]
+    first = COMMAND_TIPS[command]
 
     if command == "ls" and "-a" in args:
         second = "The `-a` flag reveals hidden names that begin with a dot."
@@ -234,24 +532,7 @@ def build_tips(command: str, args: list[str]) -> list[str]:
 
 
 def success_line(command: str) -> str:
-    return {
-        "help": "The command guide opens in your console.",
-        "pwd": "You checked your current coordinates.",
-        "ls": "You scanned the area successfully.",
-        "mkdir": "A new Rebel workspace is ready.",
-        "cd": "You moved to the right place.",
-        "touch": "The file is ready.",
-        "cat": "The report is now on screen.",
-        "write": "The file has fresh orders.",
-        "append": "You added a new line to the report.",
-        "cp": "The copy is in place.",
-        "mv": "The item has been moved.",
-        "rm": "The file is gone.",
-        "rmdir": "The empty folder is gone too.",
-        "tree": "The full layout is visible.",
-        "find": "You tracked it down.",
-        "python": "The program ran.",
-    }[command]
+    return SUCCESS_LINES[command]
 
 
 def format_command(command: str, args: list[str]) -> str:
@@ -329,6 +610,7 @@ def apply_expected(fs: VirtualFileSystem, command: str, args: list[str]) -> None
 def parse_ls_args(args: list[str]) -> tuple[str | None, bool]:
     show_hidden = False
     path: str | None = None
+
     for arg in args:
         if arg == "-a":
             show_hidden = True
@@ -338,268 +620,5 @@ def parse_ls_args(args: list[str]) -> tuple[str | None, bool]:
         if path is not None:
             raise ValueError("Course data can only use one path with ls.")
         path = arg
+
     return path, show_hidden
-
-
-def add_chapter_1(builder: CampaignBuilder) -> None:
-    builder.use_chapter("1")
-    builder.add(
-        "Check Your Coordinates",
-        (
-            "The Rebel base is huge and new technicians get lost fast. Before Leia trusts you "
-            "with the mission, she wants you to ask the computer where you are standing. "
-            "The special word is `pwd`, short for 'print working directory'. It shows your "
-            "current location, like a glowing map on the wall."
-        ),
-        "Use `pwd` to reveal your current location.",
-        "pwd",
-        success="Leia sees the coordinates and knows you can read the map.",
-    )
-    builder.add(
-        "Scan The Base",
-        (
-            "From here you can see several rooms, but you need the computer to name them. "
-            "The word `ls` means 'list'. It shows what is present in the current place, "
-            "the same way a hangar screen lists ships and doors."
-        ),
-        "Use `ls` to list the rooms around you.",
-        "ls",
-        success="The base layout appears, and the first mystery starts to make sense.",
-    )
-    builder.add(
-        "Read The Briefing",
-        (
-            "Princess Leia left her orders inside a file named "
-            "`briefing_room/mission_briefing.txt`. To crack a text file open, rebels use "
-            "the word `cat`, short for 'concatenate'. In this game, `cat` lets you read "
-            "what is inside a file. Type the special word and the file name to see Leia's message."
-        ),
-        "Read Leia's mission file.",
-        "cat",
-        "briefing_room/mission_briefing.txt",
-        success="Leia's message spills across the screen and points you toward the Falcon.",
-    )
-    builder.add(
-        "Reach The Falcon Through The Hangar",
-        (
-            "Leia's note reveals a tricky idea: the Falcon is not directly under the base. "
-            "It is inside the `hangar`, and the `hangar` contains `millennium_falcon`. "
-            "The travel word is `cd`, short for 'change directory'. To move through rooms "
-            "inside rooms, write the full path with a slash: `hangar/millennium_falcon`."
-        ),
-        "Use `cd` with the full path to reach the Falcon.",
-        "cd",
-        "hangar/millennium_falcon",
-        success="The ship ramp lowers. You found the Falcon by following the full path.",
-        tips=[
-            "The Falcon is not directly here. It is inside `hangar`, so your path must include both rooms.",
-            "`cd` means change directory, and the one-jump path is `hangar/millennium_falcon`.",
-            "Exact answer: `cd hangar/millennium_falcon`.",
-        ],
-    )
-    builder.add(
-        "Crew Manifest",
-        (
-            "Han wants a crew check before the ramp closes. You can use `ls` again, but this "
-            "time point it at the `crew` folder. When `ls` is followed by a path, it lists "
-            "what is inside that specific place without moving you there."
-        ),
-        "List the files inside `crew`.",
-        "ls",
-        "crew",
-        success="Han gets the crew manifest and knows exactly who is aboard.",
-    )
-    builder.add(
-        "Reveal Hidden Routes",
-        (
-            "R2-D2 has spotted a hidden route file, but normal `ls` will skip secret names "
-            "that begin with a dot. Add the flag `-a` after `ls` to show everything, even "
-            "hidden files. Flags are little extra instructions you attach to a command."
-        ),
-        "Use `ls -a` to reveal the hidden route file.",
-        "ls",
-        "-a",
-        success="A hidden file appears. R2-D2 whistles like he knew it was there all along.",
-    )
-
-
-def add_chapter_2(builder: CampaignBuilder) -> None:
-    builder.use_chapter("2")
-    builder.add(
-        "Read The Escape Routes",
-        (
-            "Now that the hidden file is visible, you can read it with `cat`. R2-D2 says "
-            "the file `.escape_routes.txt` contains the next step of the mission."
-        ),
-        "Open `.escape_routes.txt`.",
-        "cat",
-        ".escape_routes.txt",
-        success="The hidden note opens, and the Falcon's next problem is finally clear.",
-    )
-    builder.add(
-        "Build The Training Bay",
-        (
-            "The hidden route file says the crew needs a new planning room. To build a new "
-            "room in computer space, use `mkdir`, short for 'make directory'. A directory "
-            "is just another word for folder."
-        ),
-        "Create `training_bay`.",
-        "mkdir",
-        "training_bay",
-        success="A brand-new planning room appears inside the Falcon.",
-    )
-    builder.add(
-        "Create The Rescue Team Room",
-        (
-            "Luke wants a smaller room inside the new bay just for the rescue plan. "
-            "`mkdir` can also build a room inside another room when you give it a path like "
-            "`training_bay/rescue_team`."
-        ),
-        "Create the `rescue_team` folder inside `training_bay`.",
-        "mkdir",
-        "training_bay/rescue_team",
-        success="The rescue team room is built and waiting for names and plans.",
-    )
-    builder.add(
-        "Add Obi-Wan To The Roster",
-        (
-            "The rescue team needs its first name on the board. To make a new empty file, "
-            "use `touch`. Think of it like placing a blank data card into the folder so the "
-            "team can use it later."
-        ),
-        "Create `training_bay/rescue_team/obi_wan.txt`.",
-        "touch",
-        "training_bay/rescue_team/obi_wan.txt",
-        success="Obi-Wan is now written into the rescue team's records.",
-    )
-    builder.add(
-        "Move The Hyperdrive Note",
-        (
-            "Chewbacca finds a faulty hyperdrive note lying in the middle of the Falcon. "
-            "The command `mv` means move. It picks something up from one place and drops it "
-            "somewhere else."
-        ),
-        "Move `faulty_hyperdrive_note.txt` into `training_bay`.",
-        "mv",
-        "faulty_hyperdrive_note.txt",
-        "training_bay/faulty_hyperdrive_note.txt",
-        success="Chewbacca grunts happily. The messy note is finally where it belongs.",
-    )
-    builder.add(
-        "Inspect The Training Bay",
-        (
-            "Before Leia approves the bay, you need to show her what is inside it. Use `ls` "
-            "with the path `training_bay` so the ship computer lists that room for you."
-        ),
-        "List the contents of `training_bay`.",
-        "ls",
-        "training_bay",
-        success="Leia can now see the rescue room and the repair note in one glance.",
-    )
-    builder.add(
-        "Copy The Plans",
-        (
-            "The original Death Star plans must stay safe in the archive, so the rescue team "
-            "needs a copy, not the only version. The command `cp` means copy. The tricky part "
-            "is the path: the archive is two levels above the Falcon, so you must walk back "
-            "with `../../` before entering `archive`."
-        ),
-        "Copy the archived plans into `training_bay/rescue_team/death_star_plans.txt`.",
-        "cp",
-        "../../archive/death_star_plans.txt",
-        "training_bay/rescue_team/death_star_plans.txt",
-        success="A safe study copy lands in the rescue room while the archive stays protected.",
-        tips=[
-            "The archive is above the Falcon, so you must walk back two levels with `../../` before entering `archive`.",
-            "Use `cp source destination`, and the source begins with `../../archive/death_star_plans.txt`.",
-            "Exact answer: `cp ../../archive/death_star_plans.txt training_bay/rescue_team/death_star_plans.txt`.",
-        ],
-    )
-
-
-def add_chapter_3(builder: CampaignBuilder) -> None:
-    builder.use_chapter("3")
-    builder.add(
-        "Find The Plans",
-        (
-            "The Falcon is getting crowded, and guessing where files landed is risky. "
-            "The command `find` searches by name, like asking every droid in the ship "
-            "whether it has seen a file."
-        ),
-        "Search for `death_star_plans.txt`.",
-        "find",
-        "death_star_plans.txt",
-        success="The search points straight to the plans, and no one wastes time guessing.",
-    )
-    builder.add(
-        "Inspect The Full Bay",
-        (
-            "Leia wants the whole layout, not just one room at a time. The command `tree` "
-            "draws the folder like a branching map so you can see every room and file underneath it."
-        ),
-        "Show the full tree for `training_bay`.",
-        "tree",
-        "training_bay",
-        success="The Falcon's planning area now looks like a clean tactical map.",
-    )
-    builder.add(
-        "Enter The Rescue Team Room",
-        (
-            "Now you need to step into the rescue team room itself. `cd` changes your location, "
-            "and here the path is relative to where you already are: `training_bay/rescue_team`."
-        ),
-        "Move into `training_bay/rescue_team`.",
-        "cd",
-        "training_bay/rescue_team",
-        success="You step into the rescue room, right where the copied plans are waiting.",
-    )
-    builder.add(
-        "Check The Final Kit",
-        (
-            "Inside the rescue team room, Han wants one last quick glance at what is ready. "
-            "A plain `ls` works because you are already standing in the correct place."
-        ),
-        "List the files in the rescue team room.",
-        "ls",
-        success="The final kit is on screen: one roster file and one plan file, ready to go.",
-    )
-    builder.add(
-        "Read The Plans",
-        (
-            "The copied plans are finally in the right room. Use `cat` again to read the file "
-            "and see Leia's final instructions for this chapter."
-        ),
-        "Read `death_star_plans.txt`.",
-        "cat",
-        "death_star_plans.txt",
-        success="The plans reveal the weakness and tell you exactly where to report.",
-    )
-    builder.add(
-        "Return To Leia",
-        (
-            "The plans say it is time to report back. `cd` can also take a full path that "
-            "starts with `/`. An absolute path is like using the full galaxy address instead "
-            "of guessing from where you stand."
-        ),
-        "Use a full path to return to `/galaxy/rebel_base/briefing_room`.",
-        "cd",
-        "/galaxy/rebel_base/briefing_room",
-        success="You return to Leia's room in one clean jump across the base.",
-        tips=[
-            "This time Leia wants the full galaxy address, so your path must start with `/`.",
-            "Use `cd` with the absolute path `/galaxy/rebel_base/briefing_room`.",
-            "Exact answer: `cd /galaxy/rebel_base/briefing_room`.",
-        ],
-    )
-    builder.add(
-        "Open Leia's Reply",
-        (
-            "Leia left one more message waiting in `report_terminal.txt`. You already know the "
-            "special reading word: `cat`. Use it one more time to open the reply and close "
-            "this chapter of the adventure."
-        ),
-        "Read `report_terminal.txt`.",
-        "cat",
-        "report_terminal.txt",
-        success="Leia smiles. This chapter is complete, and the next world is waiting.",
-    )
