@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, TypeAlias
+from fnmatch import fnmatchcase
+from typing import TypeAlias
 
 
 class FileSystemError(Exception):
@@ -111,6 +112,16 @@ class VirtualFileSystem:
         file_node = self._get_or_create_file(path)
         file_node.content = f"{file_node.content}\n{text}" if file_node.content else text
 
+    def replace_line(self, path: str, line_number: int, text: str) -> None:
+        if line_number < 1:
+            raise FileSystemError("Line numbers start at 1.")
+        file_node = self._expect_file(self.resolve(path))
+        lines = file_node.content.splitlines()
+        if line_number > len(lines):
+            raise FileSystemError(f"That file has only {len(lines)} line(s).")
+        lines[line_number - 1] = text
+        file_node.content = "\n".join(lines)
+
     def ls(self, path: str | None = None, *, show_hidden: bool = False) -> list[str]:
         target = self.resolve(path or ".")
         if isinstance(target, VirtualFile):
@@ -181,6 +192,24 @@ class VirtualFileSystem:
 
         walk(start)
         return matches
+
+    def glob(self, pattern: str) -> list[str]:
+        """Expand the small wildcard grammar used by the teaching shell."""
+        cleaned = pattern.rstrip("/")
+        if "/" in cleaned:
+            parent_path, name_pattern = cleaned.rsplit("/", 1)
+            parent = self._expect_directory(self.resolve(parent_path or "/"))
+            prefix = f"{parent_path}/" if parent_path else ""
+        else:
+            parent = self.cwd
+            name_pattern = cleaned
+            prefix = ""
+
+        return [
+            f"{prefix}{name}"
+            for name in sorted(parent.children)
+            if fnmatchcase(name, name_pattern)
+        ]
 
     def path_for(self, node: Node) -> str:
         if node is self.root:
