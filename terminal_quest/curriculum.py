@@ -83,6 +83,7 @@ SKILLS: dict[str, SkillDefinition] = {
         _skill("pipes", "Connect commands", "composition", 6, "Use one command's output as another command's input.", "grep", "wc"),
         _skill("command_chaining", "Sequence commands", "composition", 6, "Run a later operation only after an earlier one succeeds.", "pipes"),
         _skill("wildcards", "Match name patterns", "composition", 6, "Operate on several matching names.", "ls", "relative_paths"),
+        _skill("plan_and_run", "Plan and run", "composition", 6, "Write ordered steps before executing the solution.", "command_chaining"),
         _skill("variables", "Variables", "programming", 7, "Give meaningful names to values."),
         _skill("data_types", "Data types", "programming", 7, "Distinguish text, numbers, and truth values.", "variables"),
         _skill("expressions", "Expressions", "programming", 7, "Combine values and operations to calculate a result.", "variables", "data_types"),

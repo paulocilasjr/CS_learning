@@ -38,7 +38,7 @@ class CurriculumTests(unittest.TestCase):
         introduced = {key for task in build_tasks() for key in task.new_skills}
 
         self.assertEqual(introduced, set(SKILLS))
-        self.assertEqual(len(build_tasks()), 65)
+        self.assertEqual(len(build_tasks()), 66)
 
     def test_review_before_introduction_is_rejected(self) -> None:
         missions = [

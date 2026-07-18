@@ -15,6 +15,7 @@ class Outcome:
     file_contents: dict[str, str] = field(default_factory=dict)
     output_contains: tuple[str, ...] = ()
     required_commands: tuple[str, ...] = ()
+    requires_plan: bool = False
 
 
 def outcome_is_satisfied(
@@ -23,7 +24,11 @@ def outcome_is_satisfied(
     filesystem: VirtualFileSystem,
     latest_output: str,
     command_history: list[str],
+    plan_used: bool = False,
 ) -> bool:
+    if outcome.requires_plan and not plan_used:
+        return False
+
     if outcome.cwd is not None and filesystem.pwd() != outcome.cwd:
         return False
 

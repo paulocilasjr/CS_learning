@@ -121,6 +121,37 @@ class TerminalUiTests(unittest.TestCase):
         self.assertGreaterEqual(TYPEWRITER_LINE_DELAY_SECONDS, 0.12)
         self.assertLessEqual(TYPEWRITER_LINE_DELAY_SECONDS, 0.25)
 
+    def test_plan_command_runs_steps_through_shell(self) -> None:
+        game = TerminalQuestGame(save_enabled=False)
+        task = next(task for task in game.tasks if task.name == "Plan The Fleet Count")
+        game._prepare_task(task)
+
+        with redirect_stdout(io.StringIO()):
+            add_result = game._handle_plan_command(
+                "plan add grep X-Wing transmissions/fleet.log | wc -l > reports/fleet_count.txt"
+            )
+            run_result = game._handle_plan_command("plan run")
+
+        self.assertEqual(add_result.name, "")
+        self.assertTrue(run_result.planned)
+        self.assertIn("grep", run_result.executed_commands)
+        self.assertIn("wc", run_result.executed_commands)
+        self.assertEqual(game.fs.read_file("reports/fleet_count.txt"), "3")
+
+    def test_planned_single_command_can_satisfy_normal_command_validation(self) -> None:
+        game = TerminalQuestGame(save_enabled=False)
+        task = game.tasks[0]
+        game._prepare_task(task)
+
+        with redirect_stdout(io.StringIO()):
+            game._handle_plan_command("plan add pwd")
+            result = game._handle_plan_command("plan run")
+
+        self.assertTrue(result.planned)
+        self.assertEqual(result.name, "pwd")
+        self.assertEqual(result.args, [])
+        self.assertTrue(game._is_correct(task, result, list(result.executed_commands)))
+
 
 if __name__ == "__main__":
     unittest.main()

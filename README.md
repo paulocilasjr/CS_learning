@@ -8,8 +8,9 @@ Every mission gives:
 - a story-style explanation of the command
 - an objective with progressively revealing hints
 - the actual result inside a safe virtual computer
+- optional Plan-and-Run steps when the learner should decide the sequence before executing it
 
-Early missions teach exact commands. Later missions accept multi-step and alternative solutions by validating their output and final virtual-computer state. The game never applies lesson commands to real files.
+Early missions teach exact commands. Later missions accept multi-step and alternative solutions by validating their output and final virtual-computer state. Plan-and-Run lets the learner write ordered steps first, inspect the plan, and then run it through the same command engine. The game never applies lesson commands to real files.
 
 ## Start The Game
 
@@ -27,13 +28,13 @@ python3 main.py
 
 ## Complete Campaign
 
-The campaign contains 65 missions across 12 chapters:
+The campaign contains 66 missions across 12 chapters:
 
 1. terminal state and navigation;
 2. reading and creating information;
 3. organizing and safely removing data;
 4. searching and filtering transmissions;
-5. pipes, redirection, chaining, and wildcards;
+5. pipes, redirection, chaining, wildcards, and Plan-and-Run;
 6. variables, values, and expressions;
 7. comparisons, conditions, and Boolean logic;
 8. lists and loops;
@@ -62,6 +63,7 @@ python3 main.py --start-task 8
 - `repeat` shows the mission again.
 - `progress` shows stars and mission progress.
 - `skills` shows mastery evidence and recommended reviews.
+- `plan` shows how to build, inspect, clear, and run ordered command steps.
 - `reset` resets the current mission room.
 - `exit` leaves the game.
 
@@ -77,7 +79,7 @@ python3 -m unittest discover -s tests -v
 python3 tools/smoke_campaign.py
 ```
 
-The smoke test completes all 65 missions through the same game loop used by a player.
+The smoke test completes all 66 missions through the same game loop used by a player.
 
 ## Documentation
 

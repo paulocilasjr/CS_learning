@@ -1004,6 +1004,35 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             success="The final digest proves that simple tools can become a larger solution.",
         ),
+        TaskSpec(
+            name="Plan The Fleet Count",
+            lesson=(
+                "Before engineers run a risky sequence, they often write the steps down and inspect the plan. "
+                "Plan-and-Run separates thinking from executing: first decide what should happen, then let the "
+                "computer carry out those steps in order. Later, picture blocks and Python code can use the same "
+                "idea: a program is a plan the computer can run."
+            ),
+            instruction=(
+                "Use Plan-and-Run to create `reports/fleet_count.txt` containing the number of X-Wing records."
+            ),
+            command="plan",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("plan_and_run",),
+            review_skills=("grep", "wc", "pipes", "redirection", "command_chaining"),
+            outcome=Outcome(
+                file_contents={"reports/fleet_count.txt": "3"},
+                required_commands=("grep", "wc"),
+                requires_plan=True,
+            ),
+            multi_step=True,
+            tips=[
+                "Use `plan add` to save a command as a step before running it.",
+                "The step can search X-Wing lines, count them, and redirect the result into the report file.",
+                "One solution: `plan add grep X-Wing transmissions/fleet.log | wc -l > reports/fleet_count.txt`, then `plan run`.",
+            ],
+            canonical_steps=(CommandStep("write", ("reports/fleet_count.txt", "3")),),
+            success="The fleet-count plan runs in order and leaves a reusable report for Rebel Intelligence.",
+        ),
     ],
     "6": [
         program_task(
@@ -1659,6 +1688,7 @@ COMMAND_TIPS = {
     "python": "Use `python file.py` to run a Python program.",
     "test": "Use `test file.py` to run the Rebel simulation checks.",
     "git": "Use a `git` subcommand to inspect or manage simulated history.",
+    "plan": "Use `plan add`, `plan show`, and `plan run` to decide steps before executing them.",
 }
 
 
@@ -1689,6 +1719,7 @@ SUCCESS_LINES = {
     "python": "The program ran.",
     "test": "The simulations passed.",
     "git": "The repository operation completed.",
+    "plan": "The planned steps ran in order.",
 }
 
 

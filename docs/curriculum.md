@@ -43,7 +43,7 @@ A mission also declares `new_skills` and `review_skills`. The content validator 
 | 2 | The Missing Droid | `cat`, `echo`, `touch`, `mkdir` | Read, create, and organize information. |
 | 3 | Imperial Sabotage | `cp`, `mv`, `rm` | Preserve, reorganize, and safely remove data. |
 | 4 | The Secret Transmission | `find`, `grep`, `head`, `tail`, `wc` | Choose efficient search and filtering tools. |
-| 5 | The Intelligence Machine | redirection, pipes, chaining, wildcards | Treat commands as composable input/output machines. |
+| 5 | The Intelligence Machine | redirection, pipes, chaining, wildcards, Plan-and-Run | Treat commands as composable input/output machines and planned steps. |
 | 6 | Build a Droid | variables, types, expressions | Represent story state as named data. |
 | 7 | Teach the Droid to Think | comparisons, conditions, Boolean logic | Give the computer decision rules. |
 | 8 | The Galactic Scanner | lists, loops | Automate repeated work over collections. |
@@ -73,9 +73,11 @@ Using a hint is normal learning behavior. It should be recorded so the game can 
 
 ## Current playable campaign
 
-The implemented campaign contains 65 missions in all 12 arcs. Every registered skill is introduced, earlier concepts return in recall and transfer situations, command composition culminates in a `COMBINE` mission, and the final chapter contains five outcome-based `CAPSTONE` missions.
+The implemented campaign contains 66 missions in all 12 arcs. Every registered skill is introduced, earlier concepts return in recall and transfer situations, command composition culminates in a `COMBINE` mission, Plan-and-Run introduces explicit step planning, and the final chapter contains five outcome-based `CAPSTONE` missions.
 
 Programming is integrated with the virtual world through editable Python files and visible output. Deliberately broken programs establish expected-versus-actual reasoning, assertions provide automated tests, and a simulated repository teaches recoverable history without touching the player's real Git repositories.
+
+Plan-and-Run is the bridge between early visual logic and later code. In this terminal version, a plan stores text commands; a future picture-block interface can map block choices onto the same ordered step model. The learning goal is stable: decide the steps, inspect them, run them, observe consequences, and revise.
 
 ## Content rules
 
@@ -85,4 +87,5 @@ Programming is integrated with the virtual world through editable Python files a
 - A review must occur after introduction.
 - Story copy never implements terminal behavior, and command code never contains plot progression.
 - Later open-ended missions validate output or final virtual-computer state rather than exact command text.
+- Missions may require planned execution when the objective is reasoning about ordered steps, not just the final state.
 - Destructive commands remain confined to the virtual filesystem.

@@ -42,6 +42,27 @@ class OutcomeValidationTests(unittest.TestCase):
             )
         )
 
+    def test_can_require_planned_execution(self) -> None:
+        outcome = Outcome(output_contains=("ready",), requires_plan=True)
+
+        self.assertFalse(
+            outcome_is_satisfied(
+                outcome,
+                filesystem=self.fs,
+                latest_output="ready",
+                command_history=[],
+            )
+        )
+        self.assertTrue(
+            outcome_is_satisfied(
+                outcome,
+                filesystem=self.fs,
+                latest_output="ready",
+                command_history=[],
+                plan_used=True,
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

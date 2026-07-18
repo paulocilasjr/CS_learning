@@ -15,7 +15,7 @@ python3 -m compileall -q main.py terminal_quest tools tests
 
 Add or reuse a story-neutral skill in `terminal_quest/curriculum.py`, then add mission data in `terminal_quest/tasks.py`. Do not put story copy in command handlers or terminal implementation in mission text. New skills need stable keys, minimal genuine prerequisites, and an introduction before any review.
 
-Missions that change state need canonical steps for deterministic later snapshots. Open-ended missions should validate outcomes rather than a single expected command string.
+Missions that change state need canonical steps for deterministic later snapshots. Open-ended missions should validate outcomes rather than a single expected command string. Use Plan-and-Run when the learning objective is deciding and inspecting ordered steps before execution.
 
 ## Adding terminal behavior
 
@@ -26,5 +26,5 @@ Register a handler and help definition in `TutorialShell`. Keep the grammar inte
 - Preserve deterministic reset behavior.
 - Include friendly, actionable error messages.
 - Test both a successful path and representative failure.
-- Run the 65-mission smoke test after curriculum or engine changes.
+- Run the 66-mission smoke test after curriculum or engine changes.
 - Update documentation when command syntax, mission count, or architecture changes.

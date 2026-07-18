@@ -10,6 +10,8 @@ story event -> problem -> concept -> action -> visible result -> consequence -> 
 
 A `TaskSpec` declares its chapter, copy, command or outcome, mission type, new skills, review skills, hints, success text, and deterministic scenario. Complex missions also declare canonical build steps so later mission snapshots remain reproducible; those steps do not restrict player solutions.
 
+Plan-and-Run missions assess whether the learner can decide ordered steps before execution. Use `Outcome(requires_plan=True)` when the planning behavior itself is part of the learning objective.
+
 ## Guidance and hints
 
 New ideas receive brief explanations and immediate action. Later appearances remove syntax guidance. Hints progress from a conceptual question to a command reminder, partial shape, and full example. Hint use is recorded as learning evidence and caps new mastery evidence at the guided stage.
@@ -40,4 +42,5 @@ Errors should identify syntax, target, state, or strategy without treating debug
 4. Supply three progressively revealing hints.
 5. Prefer state/output validation for independent work.
 6. Add a deterministic canonical state transition.
-7. Run curriculum validation, unit tests, and the full campaign smoke test.
+7. Use `requires_plan=True` only when planning is the assessed skill.
+8. Run curriculum validation, unit tests, and the full campaign smoke test.

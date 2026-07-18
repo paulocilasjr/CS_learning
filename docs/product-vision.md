@@ -21,3 +21,5 @@ type a command
 Every technical action has a story consequence. A file is a transmission, a directory is a ship section, a search discovers intelligence, a condition controls shields, a test protects a real mission, and a commit preserves a plan for other engineers.
 
 The virtual computer is a safety boundary and an educational instrument. It makes destructive commands harmless, missions deterministic, errors reproducible, and outcomes inspectable. The story motivates the work; the virtual computer provides immediate feedback; the mission creates the problem; the learner supplies the reasoning.
+
+Plan-and-Run is the long-term backbone for that reasoning. At younger ages, the child can arrange picture steps and watch consequences. In this terminal game, those steps are shell commands. Later, the same structure becomes code: plan the operations, run them, observe the result, and revise the plan when reality differs from intent.

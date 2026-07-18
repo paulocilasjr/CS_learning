@@ -22,26 +22,30 @@ SPECIAL_SOLUTIONS: dict[int, list[str]] = {
     32: ["cat transmissions/intercepts.txt | grep IMPERIAL | wc -l"],
     33: ["mkdir processed && cp reports/tatooine.txt processed/tatooine.txt"],
     34: ["grep REBEL transmissions/intercepts.txt | sort > reports/rebel_sorted.txt"],
-    51: [
+    35: [
+        "plan add grep X-Wing transmissions/fleet.log | wc -l > reports/fleet_count.txt",
+        "plan run",
+    ],
+    52: [
         'edit diagnostics/broken_navigation.py 3 "if fuel >= distance:"',
         "python diagnostics/broken_navigation.py",
     ],
-    52: [
+    53: [
         'edit diagnostics/syntax_fault.py 2 "if enemy_near:"',
         "python diagnostics/syntax_fault.py",
     ],
-    53: [
+    54: [
         'edit diagnostics/jump_tests.py 2 "    return fuel >= distance"',
         "test diagnostics/jump_tests.py",
     ],
-    55: ['edit mission_plan.py 2 "shields = True"', "git diff"],
-    56: ['edit mission_plan.py 1 \'route = "Endor"\'', "git add .", "git status"],
-    57: [
+    56: ['edit mission_plan.py 2 "shields = True"', "git diff"],
+    57: ['edit mission_plan.py 1 \'route = "Endor"\'', "git add .", "git status"],
+    58: [
         'edit mission_plan.py 1 \'route = "Dagobah"\'',
         "git add .",
         'git commit -m "Choose Dagobah"',
     ],
-    60: [
+    61: [
         "git branch endor-route",
         "git switch endor-route",
         'edit mission_plan.py 1 \'route = "Endor"\'',
@@ -50,14 +54,14 @@ SPECIAL_SOLUTIONS: dict[int, list[str]] = {
         "git switch main",
         "git merge endor-route",
     ],
-    61: ["grep FLEET intelligence/incoming/beta.log > safe/fleet_location.txt"],
-    62: [
+    62: ["grep FLEET intelligence/incoming/beta.log > safe/fleet_location.txt"],
+    63: [
         "cp intelligence/navigation.map safe/navigation.map",
         "rm intelligence/imperial_tracker.dat",
     ],
-    63: ['edit programs/defense.py 2 "if enemy_near == True:"', "python programs/defense.py"],
-    64: ['write programs/final_scan.py \'print("Dantooine")\'', "python programs/final_scan.py"],
-    65: [
+    64: ['edit programs/defense.py 2 "if enemy_near == True:"', "python programs/defense.py"],
+    65: ['write programs/final_scan.py \'print("Dantooine")\'', "python programs/final_scan.py"],
+    66: [
         'write mission_summary.txt "MISSION COMPLETE"',
         "git add .",
         'git commit -m "Complete final mission"',
@@ -70,7 +74,7 @@ def solution_for(task: Task) -> list[str]:
         return SPECIAL_SOLUTIONS[task.number]
     if task.outcome is None:
         return [format_command(task.expected_command, task.expected_args)]
-    if 35 <= task.number <= 49:
+    if 36 <= task.number <= 50:
         path, code = next(iter(task.outcome.file_contents.items()))
         escaped_code = code.replace("\n", "\\n")
         return [format_command("write", [path, escaped_code]), f"python {path}"]

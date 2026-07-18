@@ -37,10 +37,11 @@ cat ─────────> wc
 
 echo + touch ──> redirection ──> append redirection
 grep + wc ─────> pipes ────────> command chaining
+                                      └── plan and run
 ls + paths ────> wildcards
 ```
 
-This branch should culminate in missions where the player discovers, filters, counts, and saves intelligence without being told the command sequence.
+This branch should culminate in missions where the player discovers, filters, counts, saves intelligence, and plans a sequence before running it. Plan-and-Run is the same mental structure a picture-block interface can teach earlier and Python code can formalize later.
 
 ## Programming
 
@@ -95,4 +96,3 @@ When adding a skill:
 6. Run `python3 tools/validate_curriculum.py` and the tests.
 
 Dependencies describe learning order, not every concept that might be useful. Keeping the graph minimal makes sequencing constraints meaningful and avoids blocking good mission design.
-

@@ -18,6 +18,7 @@ from terminal_quest.command_engine import (
 )
 from terminal_quest.filesystem import FileSystemError, VirtualFileSystem
 from terminal_quest.learning import ReviewEngine
+from terminal_quest.planning import ExecutionPlan
 from terminal_quest.persistence import ProgressStore
 from terminal_quest.state import LearningState, StoryState
 from terminal_quest.tasks import CHAPTERS, Task, build_tasks
@@ -52,6 +53,7 @@ class CommandResult:
     output: str = ""
     error: str = ""
     executed_commands: tuple[str, ...] = ()
+    planned: bool = False
 
 
 def _normalize_path(path: str) -> str:
@@ -342,6 +344,7 @@ class TutorialShell:
                     "  repeat    show the mission text again",
                     "  progress  show stars and mission progress",
                     "  skills    show skill mastery and the review queue",
+                    "  plan      build, inspect, and run ordered command steps",
                     "  reset     reset the current mission room",
                     "  exit      save and leave the game",
                 ]
@@ -612,6 +615,7 @@ class TerminalQuestGame:
         self.review_engine = ReviewEngine()
         self.typewriter_char_delay = TYPEWRITER_CHAR_DELAY_SECONDS
         self.typewriter_line_delay = TYPEWRITER_LINE_DELAY_SECONDS
+        self.plan = ExecutionPlan()
 
     def run(self) -> None:
         self._handle_existing_save()
@@ -657,8 +661,13 @@ class TerminalQuestGame:
                 self._exit_game()
                 return
 
-            result = self.shell.execute(raw)
-            self._show_result(result)
+            result = self._handle_plan_command(raw)
+            if result is None:
+                result = self.shell.execute(raw)
+                self._show_result(result)
+            elif result.name == "":
+                continue
+
             if not result.error:
                 command_history.extend(result.executed_commands or (result.name,))
 
@@ -822,6 +831,7 @@ class TerminalQuestGame:
           repeat    show the mission again
           progress  show stars and mission number
           skills    show your strongest skills and review queue
+          plan      build, inspect, and run ordered command steps
           reset     reset the current mission room
           exit      save and leave
         """
@@ -850,6 +860,7 @@ class TerminalQuestGame:
             files=task.scenario.files,
         )
         self.shell.reset_environment()
+        self.plan.clear()
 
     def _prompt(self) -> str:
         return self._paint(f"[{self.current_index + 1:03d}] {self.fs.pwd()} $ ", PROMPT_COLOR)
@@ -953,6 +964,86 @@ class TerminalQuestGame:
 
         return None
 
+    def _handle_plan_command(self, raw: str) -> CommandResult | None:
+        stripped = raw.strip()
+        if stripped.lower() == "plan":
+            self._show_plan_help()
+            return CommandResult(raw=raw, name="", args=[])
+        if not stripped.lower().startswith("plan "):
+            return None
+
+        pieces = stripped.split(maxsplit=2)
+        action = pieces[1].lower()
+        if action == "add":
+            if len(pieces) < 3:
+                self._show_retry("`plan add` needs the command you want to save as a step.")
+                return CommandResult(raw=raw, name="", args=[])
+            step = self.plan.add(pieces[2])
+            self._show_feedback(f"Planned step {len(self.plan.steps)}: {step.raw}")
+            return CommandResult(raw=raw, name="", args=[])
+        if action == "show":
+            self._show_command_box("CURRENT PLAN", self.plan.describe(), FEEDBACK_COLOR)
+            return CommandResult(raw=raw, name="", args=[])
+        if action == "clear":
+            self.plan.clear()
+            self._show_feedback("Current plan cleared.")
+            return CommandResult(raw=raw, name="", args=[])
+        if action == "run":
+            return self._run_current_plan(raw)
+
+        self._show_retry(f"Unknown plan action `{action}`. Use `plan` to see planning commands.")
+        return CommandResult(raw=raw, name="", args=[])
+
+    def _show_plan_help(self) -> None:
+        message = (
+            "Plan-and-Run lets you write the steps first, inspect them, and run them when the plan looks right.\n"
+            "  plan add <command>   add one step\n"
+            "  plan show            inspect the planned steps\n"
+            "  plan clear           erase the current plan\n"
+            "  plan run             execute the planned steps in order"
+        )
+        self._show_command_box("PLAN HELP", message, FEEDBACK_COLOR)
+
+    def _run_current_plan(self, raw: str) -> CommandResult:
+        if not self.plan.steps:
+            self._show_retry("The current plan is empty. Add a step before running it.")
+            return CommandResult(raw=raw, name="", args=[], error="Empty plan.")
+
+        all_executed: list[str] = ["plan"]
+        latest_output = ""
+        latest_result = CommandResult(raw=raw, name="plan", args=["run"])
+        total = len(self.plan.steps)
+        for index, step in enumerate(self.plan.steps, start=1):
+            self._show_plan_step(index, total, step.raw)
+            result = self.shell.execute(step.raw)
+            self._show_result(result)
+            if not result.error:
+                all_executed.extend(result.executed_commands or (result.name,))
+                latest_output = result.output
+                latest_result = result
+            else:
+                return CommandResult(
+                    raw=raw,
+                    name=result.name,
+                    args=result.args,
+                    error=result.error,
+                    executed_commands=tuple(all_executed),
+                    planned=True,
+                )
+
+        self._show_feedback("Plan finished. Now compare the result with the mission objective.")
+        return CommandResult(
+            raw=raw,
+            name=latest_result.name,
+            args=latest_result.args,
+            output=latest_output,
+            executed_commands=tuple(all_executed),
+            planned=True,
+        )
+
+    def _show_plan_step(self, index: int, total: int, command: str) -> None:
+        self._print_wrapped(f"Plan step {index}/{total}: {command}", FEEDBACK_COLOR)
+
     def _show_progress(self) -> None:
         done = self.current_index
         total = len(self.tasks)
@@ -1015,6 +1106,7 @@ class TerminalQuestGame:
                 filesystem=self.fs,
                 latest_output=result.output,
                 command_history=command_history,
+                plan_used=result.planned,
             )
         if result.name != task.expected_command:
             return False
