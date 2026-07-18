@@ -11,6 +11,8 @@ from terminal_quest.game import (
     HINT_COLOR,
     MISSION_COLOR,
     TASK_COLOR,
+    TYPEWRITER_CHAR_DELAY_SECONDS,
+    TYPEWRITER_LINE_DELAY_SECONDS,
     CommandResult,
     TerminalQuestGame,
 )
@@ -112,6 +114,10 @@ class TerminalUiTests(unittest.TestCase):
             rendered.index("+-- END COMMAND OUTPUT --+"),
             rendered.index("Mission complete: The path is confirmed."),
         )
+
+    def test_default_typewriter_pace_is_readable(self) -> None:
+        self.assertGreaterEqual(TYPEWRITER_CHAR_DELAY_SECONDS, 0.01)
+        self.assertGreaterEqual(TYPEWRITER_LINE_DELAY_SECONDS, 0.08)
 
 
 if __name__ == "__main__":
