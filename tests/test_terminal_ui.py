@@ -22,6 +22,13 @@ class TerminalUiTests(unittest.TestCase):
         game._supports_color = lambda: True  # type: ignore[method-assign]
         return game
 
+    def animated_game(self) -> TerminalQuestGame:
+        game = self.color_game()
+        game._supports_typewriter = lambda: True  # type: ignore[method-assign]
+        game.typewriter_char_delay = 0
+        game.typewriter_line_delay = 0
+        return game
+
     def test_command_output_is_labeled_and_boxed(self) -> None:
         game = TerminalQuestGame(save_enabled=False)
         buffer = io.StringIO()
@@ -79,6 +86,32 @@ class TerminalUiTests(unittest.TestCase):
         rendered = buffer.getvalue()
         self.assertIn(f"{FEEDBACK_COLOR}Mission feedback:", rendered)
         self.assertIn(f"{HINT_COLOR}Hint:", rendered)
+
+    def test_typewriter_command_output_keeps_same_visible_text(self) -> None:
+        game = self.animated_game()
+        buffer = io.StringIO()
+
+        with redirect_stdout(buffer):
+            game._show_result(CommandResult(raw="cat note.txt", name="cat", args=[], output="first\nsecond"))
+
+        rendered = buffer.getvalue()
+        self.assertIn(f"{COMMAND_OUTPUT_COLOR}| first{ANSI_RESET}", rendered)
+        self.assertIn(f"{COMMAND_OUTPUT_COLOR}| second{ANSI_RESET}", rendered)
+        self.assertIn(f"{COMMAND_OUTPUT_COLOR}+-- END COMMAND OUTPUT --+{ANSI_RESET}", rendered)
+
+    def test_next_text_waits_until_command_output_box_is_complete(self) -> None:
+        game = self.animated_game()
+        buffer = io.StringIO()
+
+        with redirect_stdout(buffer):
+            game._show_result(CommandResult(raw="pwd", name="pwd", args=[], output="/galaxy/rebel_base"))
+            game._show_success("The path is confirmed.")
+
+        rendered = buffer.getvalue()
+        self.assertLess(
+            rendered.index("+-- END COMMAND OUTPUT --+"),
+            rendered.index("Mission complete: The path is confirmed."),
+        )
 
 
 if __name__ == "__main__":

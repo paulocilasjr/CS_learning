@@ -5,6 +5,7 @@ import io
 import os
 import sys
 import textwrap
+import time
 from contextlib import redirect_stdout
 from dataclasses import dataclass
 from pathlib import Path
@@ -38,6 +39,8 @@ HINT_COLOR = "\033[33m"
 FEEDBACK_COLOR = "\033[34m"
 PROGRESS_COLOR = "\033[35m"
 PROMPT_COLOR = "\033[1;32m"
+TYPEWRITER_CHAR_DELAY_SECONDS = 0.003
+TYPEWRITER_LINE_DELAY_SECONDS = 0.035
 
 
 @dataclass
@@ -606,6 +609,8 @@ class TerminalQuestGame:
         self.story_state = StoryState()
         self.progress_store = ProgressStore(SAVE_FILE)
         self.review_engine = ReviewEngine()
+        self.typewriter_char_delay = TYPEWRITER_CHAR_DELAY_SECONDS
+        self.typewriter_line_delay = TYPEWRITER_LINE_DELAY_SECONDS
 
     def run(self) -> None:
         self._handle_existing_save()
@@ -858,6 +863,11 @@ class TerminalQuestGame:
     def _supports_color(self) -> bool:
         return sys.stdout.isatty() and "NO_COLOR" not in os.environ
 
+    def _supports_typewriter(self) -> bool:
+        if not sys.stdout.isatty():
+            return False
+        return os.environ.get("TERMINAL_QUEST_TYPEWRITER", "1").lower() not in {"0", "false", "no", "off"}
+
     def _paint(self, text: str, color: str) -> str:
         if not self._supports_color():
             return text
@@ -887,11 +897,31 @@ class TerminalQuestGame:
 
     def _show_command_box(self, title: str, text: str, color: str) -> None:
         lines = text.splitlines() or ["(no output)"]
+        animate = self._supports_typewriter()
         print()
-        print(self._paint(f"+-- {title} --+", color))
+        self._show_command_line(f"+-- {title} --+", color, animate=animate)
         for line in lines:
-            print(self._paint(f"| {line}", color))
-        print(self._paint(f"+-- END {title} --+", color))
+            self._show_command_line(f"| {line}", color, animate=animate)
+        self._show_command_line(f"+-- END {title} --+", color, animate=animate)
+
+    def _show_command_line(self, text: str, color: str, *, animate: bool) -> None:
+        if not animate:
+            print(self._paint(text, color))
+            return
+
+        if self._supports_color():
+            sys.stdout.write(color)
+        for character in text:
+            sys.stdout.write(character)
+            sys.stdout.flush()
+            if self.typewriter_char_delay:
+                time.sleep(self.typewriter_char_delay)
+        if self._supports_color():
+            sys.stdout.write(ANSI_RESET)
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+        if self.typewriter_line_delay:
+            time.sleep(self.typewriter_line_delay)
 
     def _handle_meta_command(self, raw: str, task: Task, tip_index: int) -> str | None:
         command = raw.lower()
