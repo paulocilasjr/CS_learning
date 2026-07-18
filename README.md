@@ -64,6 +64,17 @@ python3 main.py --start-task 8
 - `reset` resets the current mission room.
 - `exit` leaves the game.
 
+## Curriculum Development
+
+The campaign now has a story-neutral skill registry, dependency graph, and explicit mission types. See [the curriculum](docs/curriculum.md) and [the skill tree](docs/skill-tree.md).
+
+Validate the teaching order and run the tests with:
+
+```sh
+python3 tools/validate_curriculum.py
+python3 -m unittest discover -s tests -v
+```
+
 ## Prototype Files
 
 The repository also includes a [star_wars_training](star_wars_training/) folder with the original static Star Wars exercise prototype. The runnable game uses its own virtual file system, so the command story can restart cleanly every time.

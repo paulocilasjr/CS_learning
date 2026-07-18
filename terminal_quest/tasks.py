@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from terminal_quest.curriculum import MissionType, validate_campaign
 from terminal_quest.filesystem import VirtualFileSystem
 
 
@@ -24,6 +25,9 @@ class Task:
     instruction: str
     expected_command: str
     expected_args: list[str]
+    mission_type: MissionType
+    new_skills: tuple[str, ...]
+    review_skills: tuple[str, ...]
     tips: list[str]
     success: str
     scenario: Scenario
@@ -43,6 +47,9 @@ class TaskSpec:
     lesson: str
     instruction: str
     command: str
+    mission_type: MissionType
+    new_skills: tuple[str, ...] = ()
+    review_skills: tuple[str, ...] = ()
     args: tuple[str, ...] = ()
     success: str | None = None
     tips: list[str] | None = None
@@ -166,6 +173,8 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Use `pwd` to reveal your current location.",
             command="pwd",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("pwd",),
             success="Leia sees the coordinates and knows you can read the map.",
         ),
         TaskSpec(
@@ -177,6 +186,8 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Use `ls` to list the rooms around you.",
             command="ls",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("ls",),
             success="The base layout appears, and the first mystery starts to make sense.",
         ),
         TaskSpec(
@@ -189,6 +200,9 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Read Leia's mission file.",
             command="cat",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("cat",),
+            review_skills=("ls",),
             args=("briefing_room/mission_briefing.txt",),
             success="Leia's message spills across the screen and points you toward the Falcon.",
         ),
@@ -202,6 +216,9 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Use `cd` with the full path to reach the Falcon.",
             command="cd",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("relative_paths", "nested_paths", "cd"),
+            review_skills=("ls",),
             args=("hangar/millennium_falcon",),
             success="The ship ramp lowers. You found the Falcon by following the full path.",
             tips=[
@@ -219,6 +236,9 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="List the files inside `crew`.",
             command="ls",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("targeted_listing",),
+            review_skills=("ls", "relative_paths"),
             args=("crew",),
             success="Han gets the crew manifest and knows exactly who is aboard.",
         ),
@@ -231,6 +251,9 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Use `ls -a` to reveal the hidden route file.",
             command="ls",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("hidden_files",),
+            review_skills=("ls",),
             args=("-a",),
             success="A hidden file appears. R2-D2 whistles like he knew it was there all along.",
         ),
@@ -244,6 +267,8 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Open `.escape_routes.txt`.",
             command="cat",
+            mission_type=MissionType.RECALL,
+            review_skills=("cat", "hidden_files"),
             args=(".escape_routes.txt",),
             success="The hidden note opens, and the Falcon's next problem is finally clear.",
         ),
@@ -256,6 +281,9 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Create `training_bay`.",
             command="mkdir",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("mkdir",),
+            review_skills=("cd",),
             args=("training_bay",),
             success="A brand-new planning room appears inside the Falcon.",
         ),
@@ -268,6 +296,8 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Create the `rescue_team` folder inside `training_bay`.",
             command="mkdir",
+            mission_type=MissionType.TRANSFER,
+            review_skills=("mkdir", "relative_paths", "nested_paths"),
             args=("training_bay/rescue_team",),
             success="The rescue team room is built and waiting for names and plans.",
         ),
@@ -280,6 +310,9 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Create `training_bay/rescue_team/obi_wan.txt`.",
             command="touch",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("touch",),
+            review_skills=("mkdir", "nested_paths"),
             args=("training_bay/rescue_team/obi_wan.txt",),
             success="Obi-Wan is now written into the rescue team's records.",
         ),
@@ -292,6 +325,9 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Move `faulty_hyperdrive_note.txt` into `training_bay`.",
             command="mv",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("mv",),
+            review_skills=("touch", "relative_paths"),
             args=("faulty_hyperdrive_note.txt", "training_bay/faulty_hyperdrive_note.txt"),
             success="Chewbacca grunts happily. The messy note is finally where it belongs.",
         ),
@@ -303,6 +339,8 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="List the contents of `training_bay`.",
             command="ls",
+            mission_type=MissionType.RECALL,
+            review_skills=("ls", "targeted_listing"),
             args=("training_bay",),
             success="Leia can now see the rescue room and the repair note in one glance.",
         ),
@@ -316,6 +354,9 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Copy the archived plans into `training_bay/rescue_team/death_star_plans.txt`.",
             command="cp",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("parent_paths", "cp"),
+            review_skills=("cat", "relative_paths"),
             args=("../../archive/death_star_plans.txt", "training_bay/rescue_team/death_star_plans.txt"),
             success="A safe study copy lands in the rescue room while the archive stays protected.",
             tips=[
@@ -335,6 +376,9 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Search for `death_star_plans.txt`.",
             command="find",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("find",),
+            review_skills=("ls", "cat"),
             args=("death_star_plans.txt",),
             success="The search points straight to the plans, and no one wastes time guessing.",
         ),
@@ -346,6 +390,9 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Show the full tree for `training_bay`.",
             command="tree",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("tree",),
+            review_skills=("ls", "nested_paths"),
             args=("training_bay",),
             success="The Falcon's planning area now looks like a clean tactical map.",
         ),
@@ -357,6 +404,8 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Move into `training_bay/rescue_team`.",
             command="cd",
+            mission_type=MissionType.RECALL,
+            review_skills=("cd", "relative_paths"),
             args=("training_bay/rescue_team",),
             success="You step into the rescue room, right where the copied plans are waiting.",
         ),
@@ -368,6 +417,8 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="List the files in the rescue team room.",
             command="ls",
+            mission_type=MissionType.RECALL,
+            review_skills=("ls",),
             success="The final kit is on screen: one roster file and one plan file, ready to go.",
         ),
         TaskSpec(
@@ -378,6 +429,8 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Read `death_star_plans.txt`.",
             command="cat",
+            mission_type=MissionType.RECALL,
+            review_skills=("cat",),
             args=("death_star_plans.txt",),
             success="The plans reveal the weakness and tell you exactly where to report.",
         ),
@@ -390,6 +443,9 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Use a full path to return to `/galaxy/rebel_base/briefing_room`.",
             command="cd",
+            mission_type=MissionType.INTRODUCE,
+            new_skills=("absolute_paths",),
+            review_skills=("cd",),
             args=("/galaxy/rebel_base/briefing_room",),
             success="You return to Leia's room in one clean jump across the base.",
             tips=[
@@ -407,6 +463,8 @@ CHAPTER_TASKS: dict[str, list[TaskSpec]] = {
             ),
             instruction="Read `report_terminal.txt`.",
             command="cat",
+            mission_type=MissionType.RECALL,
+            review_skills=("cat", "absolute_paths"),
             args=("report_terminal.txt",),
             success="Leia smiles. This chapter is complete, and the next world is waiting.",
         ),
@@ -482,6 +540,9 @@ class CampaignBuilder:
                 instruction=spec.instruction,
                 expected_command=spec.command,
                 expected_args=args,
+                mission_type=spec.mission_type,
+                new_skills=spec.new_skills,
+                review_skills=spec.review_skills,
                 tips=spec.tips or build_tips(spec.command, args),
                 success=spec.success or success_line(spec.command),
                 scenario=build_scenario(snapshot),
@@ -499,6 +560,7 @@ def build_tasks() -> list[Task]:
         for spec in CHAPTER_TASKS[chapter_key]:
             builder.add_task_spec(spec)
 
+    validate_campaign(builder.tasks)
     return builder.tasks
 
 
