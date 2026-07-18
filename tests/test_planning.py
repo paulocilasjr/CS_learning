@@ -27,6 +27,26 @@ class PlanningTests(unittest.TestCase):
         self.assertEqual(result.stopped_at, 2)
         self.assertEqual(result.step_results, ("ok: first", "error: bad"))
 
+    def test_runner_reports_each_step_before_execution(self) -> None:
+        plan = ExecutionPlan()
+        plan.add("first")
+        plan.add("second")
+        events: list[str] = []
+        runner = PlanRunner(lambda _result: False)
+
+        runner.run(
+            plan,
+            lambda raw: events.append(f"run:{raw}"),
+            before_step=lambda step, index, total: events.append(
+                f"show:{index}/{total}:{step.raw}"
+            ),
+        )
+
+        self.assertEqual(
+            events,
+            ["show:1/2:first", "run:first", "show:2/2:second", "run:second"],
+        )
+
     def test_empty_steps_are_rejected(self) -> None:
         plan = ExecutionPlan()
 

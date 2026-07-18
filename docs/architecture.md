@@ -52,7 +52,7 @@ Early guided missions compare normalized command names and arguments. Multi-step
 
 ## Plan-and-Run
 
-Plan-and-Run is intentionally below story copy and above command execution. A plan is a list of steps; running a plan sends each step through the normal command shell in order. This makes planning a stable mental model across ages: a younger interface can use pictures for steps, the current game uses shell commands, and later programming missions replace the same idea with code.
+Plan-and-Run is intentionally below story copy and above command execution. A plan is a list of steps; the reusable plan runner sends each step through the normal command shell in order and stops on the first error. Validation records the commands and relevant virtual-filesystem state from that specific run, so a planning mission cannot receive credit for work completed outside the plan. This makes planning a stable mental model across ages: a younger interface can use pictures for steps, the current game uses shell commands, and later programming missions replace the same idea with code.
 
 ## Safety boundaries
 

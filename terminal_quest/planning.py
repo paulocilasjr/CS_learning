@@ -61,9 +61,18 @@ class PlanRunner(Generic[ResultT]):
     def __init__(self, has_error: Callable[[ResultT], bool]) -> None:
         self.has_error = has_error
 
-    def run(self, plan: ExecutionPlan, execute: Callable[[str], ResultT]) -> PlanRunResult[ResultT]:
+    def run(
+        self,
+        plan: ExecutionPlan,
+        execute: Callable[[str], ResultT],
+        *,
+        before_step: Callable[[PlanStep, int, int], None] | None = None,
+    ) -> PlanRunResult[ResultT]:
         results: list[ResultT] = []
+        total = len(plan.steps)
         for index, step in enumerate(plan.steps, start=1):
+            if before_step is not None:
+                before_step(step, index, total)
             result = execute(step.raw)
             results.append(result)
             if self.has_error(result):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from terminal_quest.filesystem import VirtualFileSystem
+from terminal_quest.filesystem import FileSystemError, VirtualFileSystem
 from terminal_quest.version_control import VirtualRepository
 
 
@@ -35,6 +35,54 @@ class VersionControlTests(unittest.TestCase):
 
         self.assertIn("Merged alternate into main", result)
         self.assertEqual(self.fs.read_file("plan.txt"), "Dagobah")
+
+    def test_merge_preserves_independent_changes_from_both_branches(self) -> None:
+        self.repo.branch("alternate")
+        self.repo.switch("alternate")
+        self.fs.write_file("plan.txt", "Dagobah")
+        self.repo.add_all()
+        self.repo.commit("Try Dagobah")
+        self.repo.switch("main")
+        self.fs.write_file("briefing.txt", "Keep this target-branch work")
+        self.repo.add_all()
+        self.repo.commit("Add briefing")
+
+        self.repo.merge("alternate")
+
+        self.assertEqual(self.fs.read_file("plan.txt"), "Dagobah")
+        self.assertEqual(self.fs.read_file("briefing.txt"), "Keep this target-branch work")
+
+    def test_log_only_shows_commits_reachable_from_current_branch(self) -> None:
+        self.repo.branch("alternate")
+        self.repo.switch("alternate")
+        self.fs.write_file("plan.txt", "Dagobah")
+        self.repo.add_all()
+        self.repo.commit("Alternate-only commit")
+        self.repo.switch("main")
+        self.fs.write_file("plan.txt", "Endor")
+        self.repo.add_all()
+        self.repo.commit("Main-only commit")
+
+        log = self.repo.log()
+
+        self.assertIn("Main-only commit", log)
+        self.assertNotIn("Alternate-only commit", log)
+
+    def test_merge_conflict_preserves_current_branch(self) -> None:
+        self.repo.branch("alternate")
+        self.repo.switch("alternate")
+        self.fs.write_file("plan.txt", "Dagobah")
+        self.repo.add_all()
+        self.repo.commit("Try Dagobah")
+        self.repo.switch("main")
+        self.fs.write_file("plan.txt", "Endor")
+        self.repo.add_all()
+        self.repo.commit("Choose Endor")
+
+        with self.assertRaisesRegex(FileSystemError, "Merge conflict"):
+            self.repo.merge("alternate")
+
+        self.assertEqual(self.fs.read_file("plan.txt"), "Endor")
 
 
 if __name__ == "__main__":

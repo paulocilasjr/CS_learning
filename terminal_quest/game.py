@@ -18,7 +18,7 @@ from terminal_quest.command_engine import (
 )
 from terminal_quest.filesystem import FileSystemError, VirtualFileSystem
 from terminal_quest.learning import ReviewEngine
-from terminal_quest.planning import ExecutionPlan
+from terminal_quest.planning import ExecutionPlan, PlanRunner, PlanStep
 from terminal_quest.persistence import ProgressStore
 from terminal_quest.state import LearningState, StoryState
 from terminal_quest.tasks import CHAPTERS, Task, build_tasks
@@ -54,6 +54,8 @@ class CommandResult:
     error: str = ""
     executed_commands: tuple[str, ...] = ()
     planned: bool = False
+    planned_commands: tuple[str, ...] = ()
+    plan_initial_snapshot: dict[str, object] | None = None
 
 
 def _normalize_path(path: str) -> str:
@@ -616,6 +618,7 @@ class TerminalQuestGame:
         self.typewriter_char_delay = TYPEWRITER_CHAR_DELAY_SECONDS
         self.typewriter_line_delay = TYPEWRITER_LINE_DELAY_SECONDS
         self.plan = ExecutionPlan()
+        self.plan_runner = PlanRunner[CommandResult](lambda result: bool(result.error))
 
     def run(self) -> None:
         self._handle_existing_save()
@@ -1009,36 +1012,53 @@ class TerminalQuestGame:
             self._show_retry("The current plan is empty. Add a step before running it.")
             return CommandResult(raw=raw, name="", args=[], error="Empty plan.")
 
-        all_executed: list[str] = ["plan"]
-        latest_output = ""
-        latest_result = CommandResult(raw=raw, name="plan", args=["run"])
-        total = len(self.plan.steps)
-        for index, step in enumerate(self.plan.steps, start=1):
-            self._show_plan_step(index, total, step.raw)
-            result = self.shell.execute(step.raw)
+        initial_snapshot = self.fs.snapshot()
+
+        def execute_step(command: str) -> CommandResult:
+            result = self.shell.execute(command)
             self._show_result(result)
-            if not result.error:
-                all_executed.extend(result.executed_commands or (result.name,))
-                latest_output = result.output
-                latest_result = result
-            else:
-                return CommandResult(
-                    raw=raw,
-                    name=result.name,
-                    args=result.args,
-                    error=result.error,
-                    executed_commands=tuple(all_executed),
-                    planned=True,
-                )
+            return result
+
+        def show_step(step: PlanStep, index: int, total: int) -> None:
+            self._show_plan_step(index, total, step.raw)
+
+        run_result = self.plan_runner.run(
+            self.plan,
+            execute_step,
+            before_step=show_step,
+        )
+        latest_result = run_result.latest
+        assert latest_result is not None
+
+        planned_commands: list[str] = []
+        for result in run_result.step_results:
+            if result.error:
+                break
+            planned_commands.extend(result.executed_commands or (result.name,))
+
+        all_executed = ("plan", *planned_commands)
+        if not run_result.completed:
+            return CommandResult(
+                raw=raw,
+                name=latest_result.name,
+                args=latest_result.args,
+                error=latest_result.error,
+                executed_commands=all_executed,
+                planned=True,
+                planned_commands=tuple(planned_commands),
+                plan_initial_snapshot=initial_snapshot,
+            )
 
         self._show_feedback("Plan finished. Now compare the result with the mission objective.")
         return CommandResult(
             raw=raw,
             name=latest_result.name,
             args=latest_result.args,
-            output=latest_output,
-            executed_commands=tuple(all_executed),
+            output=latest_result.output,
+            executed_commands=all_executed,
             planned=True,
+            planned_commands=tuple(planned_commands),
+            plan_initial_snapshot=initial_snapshot,
         )
 
     def _show_plan_step(self, index: int, total: int, command: str) -> None:
@@ -1107,6 +1127,8 @@ class TerminalQuestGame:
                 latest_output=result.output,
                 command_history=command_history,
                 plan_used=result.planned,
+                planned_commands=result.planned_commands,
+                plan_initial_snapshot=result.plan_initial_snapshot,
             )
         if result.name != task.expected_command:
             return False

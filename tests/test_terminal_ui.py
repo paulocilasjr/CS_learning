@@ -137,6 +137,25 @@ class TerminalUiTests(unittest.TestCase):
         self.assertIn("grep", run_result.executed_commands)
         self.assertIn("wc", run_result.executed_commands)
         self.assertEqual(game.fs.read_file("reports/fleet_count.txt"), "3")
+        self.assertTrue(
+            game._is_correct(task, run_result, list(run_result.executed_commands))
+        )
+
+    def test_unrelated_plan_cannot_claim_work_done_outside_plan(self) -> None:
+        game = TerminalQuestGame(save_enabled=False)
+        task = next(task for task in game.tasks if task.name == "Plan The Fleet Count")
+        game._prepare_task(task)
+
+        direct_result = game.shell.execute(
+            "grep X-Wing transmissions/fleet.log | wc -l > reports/fleet_count.txt"
+        )
+        command_history = list(direct_result.executed_commands)
+        with redirect_stdout(io.StringIO()):
+            game._handle_plan_command("plan add pwd")
+            plan_result = game._handle_plan_command("plan run")
+        command_history.extend(plan_result.executed_commands)
+
+        self.assertFalse(game._is_correct(task, plan_result, command_history))
 
     def test_planned_single_command_can_satisfy_normal_command_validation(self) -> None:
         game = TerminalQuestGame(save_enabled=False)
