@@ -1,8 +1,11 @@
-# Star Wars Terminal Quest
+# Star Wars Computer Science Learning Adventures
 
-`Star Wars Terminal Quest` is a safe, terminal-only computer science adventure for young learners. It begins with command-line basics and progresses through programming, debugging, testing, version control, and independent problem solving.
+This project contains two separate Star Wars learning games connected by the same Plan-and-Run backbone:
 
-Every mission gives:
+- **Picture Logic Game** for younger learners: choose emoji action cards, arrange a plan, run it, and watch BB-8 move through ten visual levels. No computer commands are required.
+- **Terminal CS Game** for older learners: complete 66 missions covering terminal commands, programming, debugging, testing, version control, and independent problem solving.
+
+Every Terminal CS mission gives:
 
 - a short story moment
 - a story-style explanation of the command
@@ -10,7 +13,7 @@ Every mission gives:
 - the actual result inside a safe virtual computer
 - optional Plan-and-Run steps when the learner should decide the sequence before executing it
 
-Early missions teach exact commands. Later missions accept multi-step and alternative solutions by validating their output and final virtual-computer state. Plan-and-Run lets the learner write ordered steps first, inspect the plan, and then run it through the same command engine. The game never applies lesson commands to real files.
+Early terminal missions teach exact commands. Later missions accept multi-step and alternative solutions by validating their output and final virtual-computer state. The Picture Logic Game teaches the same planning cycle with visual cards and a safe board. Neither game applies lesson actions to real computer files.
 
 ## Start The Game
 
@@ -26,7 +29,23 @@ You can also run it directly with Python:
 python3 main.py
 ```
 
-## Complete Campaign
+The launcher asks which game to play:
+
+```text
+1. Terminal CS Game
+2. Picture Logic Game
+```
+
+Start either game directly when desired:
+
+```sh
+python3 main.py --game terminal
+python3 main.py --game picture
+```
+
+The games store progress independently. Resetting one selected game does not erase the other game's save.
+
+## Terminal CS Campaign
 
 The campaign contains 66 missions across 12 chapters:
 
@@ -48,16 +67,19 @@ The game records mastery evidence separately from story progress. Type `skills` 
 ## Helpful Options
 
 ```sh
-python3 main.py --reset
-python3 main.py --no-save
-python3 main.py --start-task 8
+python3 main.py --game terminal --reset
+python3 main.py --game picture --reset
+python3 main.py --game terminal --no-save --start-task 8
+python3 main.py --game picture --no-save --start-level 4
 ```
 
-- `--reset` starts from mission 1 and clears saved progress.
+- `--game` skips the launcher menu.
+- `--reset` clears progress for the selected game.
 - `--no-save` runs without writing progress to disk.
-- `--start-task` jumps to a specific mission while testing.
+- `--start-task` jumps to a Terminal CS mission while testing.
+- `--start-level` jumps to a Picture Logic level while testing.
 
-## In-Game Commands
+## Terminal CS Commands
 
 - `hint` shows a clue for the current mission.
 - `repeat` shows the mission again.
@@ -66,6 +88,15 @@ python3 main.py --start-task 8
 - `plan` shows how to build, inspect, clear, and run ordered command steps.
 - `reset` resets the current mission room.
 - `exit` leaves the game.
+
+## Picture Logic Controls
+
+- Number keys add the picture cards shown on screen.
+- `run` executes the complete picture plan.
+- `show`, `undo`, and `clear` help revise the plan.
+- `hint` gives a level clue.
+- `board` repeats the starting board.
+- `exit` leaves the picture game.
 
 ## Curriculum Development
 
@@ -77,9 +108,10 @@ Validate the teaching order and run the tests with:
 python3 tools/validate_curriculum.py
 python3 -m unittest discover -s tests -v
 python3 tools/smoke_campaign.py
+python3 tools/smoke_picture_campaign.py
 ```
 
-The smoke test completes all 66 missions through the same game loop used by a player.
+The smoke tests complete all 66 terminal missions and all 10 picture levels through the same game loops used by players.
 
 ## Documentation
 
@@ -91,6 +123,7 @@ The smoke test completes all 66 missions through the same game loop used by a pl
 - [Story bible](docs/story-bible.md)
 - [Contribution guide](docs/contribution-guide.md)
 - [Development phases](docs/development-phases.md)
+- [Picture Logic Game](docs/picture-logic-game.md)
 
 ## Prototype Files
 

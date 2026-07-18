@@ -77,7 +77,7 @@ The implemented campaign contains 66 missions in all 12 arcs. Every registered s
 
 Programming is integrated with the virtual world through editable Python files and visible output. Deliberately broken programs establish expected-versus-actual reasoning, assertions provide automated tests, and a simulated repository teaches recoverable history without touching the player's real Git repositories.
 
-Plan-and-Run is the bridge between early visual logic and later code. In this terminal version, a plan stores text commands; a future picture-block interface can map block choices onto the same ordered step model. The learning goal is stable: decide the steps, inspect them, run them, observe consequences, and revise.
+Plan-and-Run is the bridge between early visual logic and later code. The separate Picture Logic Game stores visual action-card keys in the shared plan, while the Terminal CS Game stores text commands. The learning goal remains stable: decide the steps, inspect them, run them, observe consequences, and revise.
 
 ## Content rules
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from terminal_quest.planning import ExecutionPlan, PlanRunner
+from game_core.planning import ExecutionPlan, PlanRunner
 
 
 class PlanningTests(unittest.TestCase):
@@ -52,6 +52,14 @@ class PlanningTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             plan.add("   ")
+
+    def test_plan_can_undo_the_latest_step(self) -> None:
+        plan = ExecutionPlan()
+        plan.add("first")
+        latest = plan.add("second")
+
+        self.assertEqual(plan.undo(), latest)
+        self.assertEqual([step.raw for step in plan.steps], ["first"])
 
 
 if __name__ == "__main__":

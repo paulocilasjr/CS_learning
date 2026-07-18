@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 
 from terminal_quest.curriculum import MasteryStage, MissionType
 from terminal_quest.learning import ReviewEngine
-from terminal_quest.persistence import ProgressStore
+from game_core.persistence import ProgressStore
 from terminal_quest.state import LearningState, StoryState
 
 

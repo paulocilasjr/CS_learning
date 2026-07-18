@@ -8,7 +8,8 @@ The project uses the Python standard library and requires no dependency installa
 python3 tools/validate_curriculum.py
 python3 -m unittest discover -s tests -v
 python3 tools/smoke_campaign.py
-python3 -m compileall -q main.py terminal_quest tools tests
+python3 tools/smoke_picture_campaign.py
+python3 -m compileall -q main.py game_core picture_logic terminal_quest tools tests
 ```
 
 ## Adding curriculum content
@@ -21,10 +22,14 @@ Missions that change state need canonical steps for deterministic later snapshot
 
 Register a handler and help definition in `TutorialShell`. Keep the grammar intentionally small and add focused tests under `tests/`. Commands must operate only on the virtual filesystem, programming runtime, or simulated repository.
 
+## Adding picture behavior
+
+Add visual action cards and mission data under `picture_logic/`. Picture actions must remain command-free, execute through the shared `game_core.planning` runner, start each run from a deterministic board, and display the board after every consequence.
+
 ## Quality expectations
 
 - Preserve deterministic reset behavior.
 - Include friendly, actionable error messages.
 - Test both a successful path and representative failure.
-- Run the 66-mission smoke test after curriculum or engine changes.
+- Run both campaign smoke tests after curriculum or engine changes.
 - Update documentation when command syntax, mission count, or architecture changes.

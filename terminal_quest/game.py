@@ -10,6 +10,8 @@ from contextlib import redirect_stdout
 from dataclasses import dataclass
 from pathlib import Path
 
+from game_core.persistence import ProgressStore
+from game_core.planning import ExecutionPlan, PlanRunner, PlanStep
 from terminal_quest.command_engine import (
     CommandDefinition,
     CommandExecutor,
@@ -18,8 +20,6 @@ from terminal_quest.command_engine import (
 )
 from terminal_quest.filesystem import FileSystemError, VirtualFileSystem
 from terminal_quest.learning import ReviewEngine
-from terminal_quest.planning import ExecutionPlan, PlanRunner, PlanStep
-from terminal_quest.persistence import ProgressStore
 from terminal_quest.state import LearningState, StoryState
 from terminal_quest.tasks import CHAPTERS, Task, build_tasks
 from terminal_quest.validation import outcome_is_satisfied
