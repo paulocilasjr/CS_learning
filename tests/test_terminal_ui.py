@@ -115,9 +115,11 @@ class TerminalUiTests(unittest.TestCase):
             rendered.index("Mission complete: The path is confirmed."),
         )
 
-    def test_default_typewriter_pace_is_readable(self) -> None:
-        self.assertGreaterEqual(TYPEWRITER_CHAR_DELAY_SECONDS, 0.01)
-        self.assertGreaterEqual(TYPEWRITER_LINE_DELAY_SECONDS, 0.08)
+    def test_default_typewriter_pace_matches_human_reading_speed(self) -> None:
+        self.assertGreaterEqual(TYPEWRITER_CHAR_DELAY_SECONDS, 0.035)
+        self.assertLessEqual(TYPEWRITER_CHAR_DELAY_SECONDS, 0.06)
+        self.assertGreaterEqual(TYPEWRITER_LINE_DELAY_SECONDS, 0.12)
+        self.assertLessEqual(TYPEWRITER_LINE_DELAY_SECONDS, 0.25)
 
 
 if __name__ == "__main__":
