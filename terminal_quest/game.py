@@ -26,9 +26,18 @@ from terminal_quest.version_control import VirtualRepository
 
 SAVE_FILE = Path(".star_wars_terminal_quest_progress.json")
 
+ANSI_RESET = "\033[0m"
+CHAPTER_COLOR = "\033[1;35m"
+MISSION_COLOR = "\033[1;33m"
+STORY_COLOR = "\033[38;5;250m"
+TASK_COLOR = "\033[1;38;5;220m"
 COMMAND_OUTPUT_COLOR = "\033[36m"
 COMMAND_ERROR_COLOR = "\033[31m"
-ANSI_RESET = "\033[0m"
+SUCCESS_COLOR = "\033[32m"
+HINT_COLOR = "\033[33m"
+FEEDBACK_COLOR = "\033[34m"
+PROGRESS_COLOR = "\033[35m"
+PROMPT_COLOR = "\033[1;32m"
 
 
 @dataclass
@@ -629,7 +638,7 @@ class TerminalQuestGame:
             if raw.lower() == "hint":
                 tip = task.tips[min(hints_used, len(task.tips) - 1)]
                 hints_used += 1
-                print(f"\nHint: {tip}")
+                self._show_hint(tip)
                 continue
 
             meta_action = self._handle_meta_command(raw, task, hints_used)
@@ -653,20 +662,20 @@ class TerminalQuestGame:
 
             if task.multi_step:
                 if not result.error:
-                    print("\nGood step. Inspect the result and continue the mission.")
+                    self._show_feedback("Good step. Inspect the result and continue the mission.")
                     continue
                 attempts += 1
                 tip = task.tips[min(hints_used, len(task.tips) - 1)]
                 hints_used += 1
-                print("\nThat step did not work, but your completed mission state is still here.")
-                print(f"Tip: {tip}")
+                self._show_retry("That step did not work, but your completed mission state is still here.")
+                self._show_hint(tip, label="Tip")
                 continue
 
             attempts += 1
             tip = task.tips[min(hints_used, len(task.tips) - 1)]
             hints_used += 1
-            print("\nNot quite yet. The practice room is reset so you can try again.")
-            print(f"Tip: {tip}")
+            self._show_retry("Not quite yet. The practice room is reset so you can try again.")
+            self._show_hint(tip, label="Tip")
             self._prepare_task(task)
             command_history.clear()
 
@@ -688,8 +697,8 @@ class TerminalQuestGame:
         for flag in task.story_flags:
             self.story_state.story_flags[flag] = True
 
-        print(f"\n{task.success}")
-        print(f"Stars earned this mission: {earned}")
+        self._show_success(task.success)
+        self._print_colored(f"Stars earned this mission: {earned}", SUCCESS_COLOR)
 
         self.current_index += 1
         chapter_finished = (
@@ -705,9 +714,9 @@ class TerminalQuestGame:
     def _exit_game(self) -> None:
         self._save_progress()
         if self.save_enabled:
-            print("\nProgress saved. See you next time.")
+            self._print_colored("\nProgress saved. See you next time.", PROGRESS_COLOR)
         else:
-            print("\nSee you next time.")
+            self._print_colored("\nSee you next time.", PROGRESS_COLOR)
         raise SystemExit
 
     def _finish_campaign(self) -> None:
@@ -715,10 +724,11 @@ class TerminalQuestGame:
         self.story_state.current_mission = len(self.tasks) + 1
         self._save_progress()
 
-        print(
-            "\nYou completed the current Star Wars campaign."
-            f"\nTotal stars: {self.stars}"
-            "\nLeia has the briefing, the rescue team is set, and the Falcon is ready for the next chapter."
+        self._print_colored("\nCampaign complete: You completed the current Star Wars campaign.", SUCCESS_COLOR)
+        self._print_colored(f"Total stars: {self.stars}", SUCCESS_COLOR)
+        self._print_wrapped(
+            "Leia has the briefing, the rescue team is set, and the Falcon is ready for the next chapter.",
+            SUCCESS_COLOR,
         )
 
     def _handle_existing_save(self) -> None:
@@ -738,9 +748,10 @@ class TerminalQuestGame:
         saved_learning = LearningState.from_dict(dict(saved.get("learning_state", {})))
         saved_story = StoryState.from_dict(dict(saved.get("story_state", {})))
         if saved_index == len(self.tasks):
-            print(
-                "A completed campaign record was found."
-                "\nType `review` to replay while keeping mastery, or `restart` to clear all progress."
+            self._print_wrapped(
+                "A completed campaign record was found. Type `review` to replay while keeping mastery, "
+                "or `restart` to clear all progress.",
+                PROGRESS_COLOR,
             )
             while True:
                 choice = input("> ").strip().lower()
@@ -753,13 +764,14 @@ class TerminalQuestGame:
                 if choice == "restart":
                     self.progress_store.clear()
                     return
-                print("Please type `review` or `restart`.")
+                self._show_retry("Please type `review` or `restart`.")
         if not (0 < saved_index < len(self.tasks)):
             return
 
-        print(
-            f"Saved progress found at mission {saved_index + 1} of {len(self.tasks)}."
-            "\nType `resume` to continue or `restart` to begin from mission 1."
+        self._print_wrapped(
+            f"Saved progress found at mission {saved_index + 1} of {len(self.tasks)}. "
+            "Type `resume` to continue or `restart` to begin from mission 1.",
+            PROGRESS_COLOR,
         )
 
         while True:
@@ -775,7 +787,7 @@ class TerminalQuestGame:
                 self.current_index = 0
                 self.stars = 0
                 return
-            print("Please type `resume` or `restart`.")
+            self._show_retry("Please type `resume` or `restart`.")
 
     def _save_progress(self) -> None:
         if not self.save_enabled:
@@ -807,23 +819,23 @@ class TerminalQuestGame:
           reset     reset the current mission room
           exit      save and leave
         """
-        print(textwrap.dedent(message).strip())
+        self._print_colored(textwrap.dedent(message).strip(), STORY_COLOR)
 
     def _show_chapter_intro(self, task: Task) -> None:
         chapter = CHAPTERS[task.chapter_key]
         line = "=" * 60
-        print(f"\n{line}")
-        print(f"Chapter {chapter.key}: {chapter.name}")
-        print(textwrap.fill(chapter.intro, width=72))
-        print(line)
+        self._print_colored(f"\n{line}", CHAPTER_COLOR)
+        self._print_colored(f"CHAPTER {chapter.key}: {chapter.name}", CHAPTER_COLOR)
+        self._print_wrapped(chapter.intro, STORY_COLOR)
+        self._print_colored(line, CHAPTER_COLOR)
 
     def _show_task(self, task: Task) -> None:
-        print(f"\nMission {task.number}/{len(self.tasks)}")
-        print(task.name)
+        self._print_colored(f"\nMISSION {task.number}/{len(self.tasks)}", MISSION_COLOR)
+        self._print_colored(task.name, MISSION_COLOR)
         print()
-        self._show_story_text(task.lesson)
+        self._show_story_text(task.lesson, STORY_COLOR)
         print()
-        self._show_story_text(f"Your task: {task.instruction}")
+        self._show_story_text(f"YOUR TASK: {task.instruction}", TASK_COLOR)
 
     def _prepare_task(self, task: Task) -> None:
         self.fs.load_snapshot(
@@ -834,12 +846,12 @@ class TerminalQuestGame:
         self.shell.reset_environment()
 
     def _prompt(self) -> str:
-        return f"[{self.current_index + 1:03d}] {self.fs.pwd()} $ "
+        return self._paint(f"[{self.current_index + 1:03d}] {self.fs.pwd()} $ ", PROMPT_COLOR)
 
-    def _show_story_text(self, text: str) -> None:
+    def _show_story_text(self, text: str, color: str = STORY_COLOR) -> None:
         paragraphs = text.split("\n\n")
         for index, paragraph in enumerate(paragraphs):
-            print(textwrap.fill(paragraph, width=72))
+            self._print_wrapped(paragraph, color)
             if index != len(paragraphs) - 1:
                 print()
 
@@ -850,6 +862,28 @@ class TerminalQuestGame:
         if not self._supports_color():
             return text
         return f"{color}{text}{ANSI_RESET}"
+
+    def _print_colored(self, text: str, color: str) -> None:
+        print(self._paint(text, color))
+
+    def _print_wrapped(self, text: str, color: str, *, width: int = 72) -> None:
+        print(self._paint(textwrap.fill(text, width=width), color))
+
+    def _show_hint(self, tip: str, *, label: str = "Hint") -> None:
+        print()
+        self._print_wrapped(f"{label}: {tip}", HINT_COLOR)
+
+    def _show_feedback(self, message: str) -> None:
+        print()
+        self._print_wrapped(f"Mission feedback: {message}", FEEDBACK_COLOR)
+
+    def _show_success(self, message: str) -> None:
+        print()
+        self._print_wrapped(f"Mission complete: {message}", SUCCESS_COLOR)
+
+    def _show_retry(self, message: str) -> None:
+        print()
+        self._print_wrapped(f"Try again: {message}", COMMAND_ERROR_COLOR)
 
     def _show_command_box(self, title: str, text: str, color: str) -> None:
         lines = text.splitlines() or ["(no output)"]
@@ -864,7 +898,7 @@ class TerminalQuestGame:
 
         if command == "hint":
             tip = task.tips[min(tip_index, len(task.tips) - 1)]
-            print(f"\nHint: {tip}")
+            self._show_hint(tip)
             return "continue"
 
         if command == "repeat":
@@ -880,7 +914,7 @@ class TerminalQuestGame:
             return "continue"
 
         if command == "reset":
-            print("\nMission room reset.")
+            self._show_feedback("Mission room reset.")
             return "reset"
 
         if command == "exit":
@@ -894,28 +928,31 @@ class TerminalQuestGame:
         blocks = 20
         filled = round((done / total) * blocks)
         bar = "#" * filled + "-" * (blocks - filled)
-        print(f"\nProgress: [{bar}] {done}/{total}")
-        print(f"Stars: {self.stars}")
-        print(f"Skills practiced: {len(self.learning_state.skills)}")
+        self._print_colored(f"\nProgress: [{bar}] {done}/{total}", PROGRESS_COLOR)
+        self._print_colored(f"Stars: {self.stars}", PROGRESS_COLOR)
+        self._print_colored(f"Skills practiced: {len(self.learning_state.skills)}", PROGRESS_COLOR)
 
     def _show_skills(self) -> None:
         if not self.learning_state.skills:
-            print("\nComplete a mission to begin your skill record.")
+            self._show_feedback("Complete a mission to begin your skill record.")
             return
 
         names = ["unseen", "introduced", "guided", "recalled", "transferred", "integrated"]
-        print("\nSkill record:")
+        self._print_colored("\nSkill record:", PROGRESS_COLOR)
         for key, progress in sorted(
             self.learning_state.skills.items(),
             key=lambda item: (-item[1].mastery, item[0]),
         ):
             level = names[min(progress.mastery, len(names) - 1)]
-            print(f"  {key:<20} {level:<12} attempts: {progress.attempts} hints: {progress.hints_used}")
+            self._print_colored(
+                f"  {key:<20} {level:<12} attempts: {progress.attempts} hints: {progress.hints_used}",
+                PROGRESS_COLOR,
+            )
         if self.learning_state.review_queue:
-            print(f"Review queue: {', '.join(self.learning_state.review_queue)}")
+            self._print_colored(f"Review queue: {', '.join(self.learning_state.review_queue)}", HINT_COLOR)
         recommendations = self.review_engine.recommend(self.learning_state)
         if recommendations:
-            print(f"Recommended next review: {', '.join(recommendations)}")
+            self._print_colored(f"Recommended next review: {', '.join(recommendations)}", HINT_COLOR)
 
     def _show_result(self, result: CommandResult) -> None:
         if result.error:
@@ -934,9 +971,9 @@ class TerminalQuestGame:
             return
 
         completed_chapter = CHAPTERS[completed_task.chapter_key]
-        print(f"Chapter complete: {completed_chapter.name}")
-        print(f"Reward unlocked: {completed_chapter.reward}")
-        print(f"Progress so far: {self.current_index}/{len(self.tasks)} missions")
+        self._print_colored(f"Chapter complete: {completed_chapter.name}", SUCCESS_COLOR)
+        self._print_colored(f"Reward unlocked: {completed_chapter.reward}", SUCCESS_COLOR)
+        self._print_colored(f"Progress so far: {self.current_index}/{len(self.tasks)} missions", PROGRESS_COLOR)
 
     def _is_correct(self, task: Task, result: CommandResult, command_history: list[str]) -> bool:
         if result.error:
