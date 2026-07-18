@@ -77,6 +77,7 @@ SKILLS: dict[str, SkillDefinition] = {
         _skill("head", "Read the beginning", "search", 6, "Inspect the first part of larger data.", "cat"),
         _skill("tail", "Read the ending", "search", 6, "Inspect the final part of larger data.", "cat"),
         _skill("wc", "Count data", "search", 6, "Count lines, words, or characters.", "cat"),
+        _skill("sort", "Sort text data", "search", 6, "Arrange lines in a predictable order.", "cat"),
         _skill("redirection", "Redirect output", "composition", 6, "Save command output as file data.", "echo", "touch"),
         _skill("append_redirection", "Append output", "composition", 6, "Add command output to existing file data.", "redirection"),
         _skill("pipes", "Connect commands", "composition", 6, "Use one command's output as another command's input.", "grep", "wc"),

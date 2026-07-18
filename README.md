@@ -1,16 +1,15 @@
 # Star Wars Terminal Quest
 
-`Star Wars Terminal Quest` is a terminal-only tutorial game for kids.
-It teaches command-line basics through a Star Wars story instead of abstract drills.
+`Star Wars Terminal Quest` is a safe, terminal-only computer science adventure for young learners. It begins with command-line basics and progresses through programming, debugging, testing, version control, and independent problem solving.
 
 Every mission gives:
 
 - a short story moment
 - a story-style explanation of the command
-- one command to type
-- the actual result of that command inside a safe practice shell
+- an objective with progressively revealing hints
+- the actual result inside a safe virtual computer
 
-The game does not touch your real files. It runs in its own Rebel training environment.
+Early missions teach exact commands. Later missions accept multi-step and alternative solutions by validating their output and final virtual-computer state. The game never applies lesson commands to real files.
 
 ## Start The Game
 
@@ -26,23 +25,24 @@ You can also run it directly with Python:
 python3 main.py
 ```
 
-## Campaign Structure
+## Complete Campaign
 
-Version 1 includes a first Star Wars campaign with chapter-based lessons:
+The campaign contains 65 missions across 12 chapters:
 
-- `Briefing At Yavin`
-- `Preparing The Falcon`
-- `Plans For The Assault`
+1. terminal state and navigation;
+2. reading and creating information;
+3. organizing and safely removing data;
+4. searching and filtering transmissions;
+5. pipes, redirection, chaining, and wildcards;
+6. variables, values, and expressions;
+7. comparisons, conditions, and Boolean logic;
+8. lists and loops;
+9. functions, mappings, and algorithms;
+10. debugging and automated simulation tests;
+11. simulated Git status, diffs, commits, history, branches, and merges;
+12. open-ended capstones that combine the full curriculum.
 
-The missions connect commands to story actions such as:
-
-- checking your location with `pwd`
-- listing the Rebel base with `ls`
-- revealing hidden intel with `ls -a`
-- reading Leia's orders with `cat`
-- creating folders with `mkdir`
-- creating files with `touch`
-- moving and copying mission files with `mv` and `cp`
+The game records mastery evidence separately from story progress. Type `skills` during play to inspect attempts, hints, mastery stages, and recommended review topics.
 
 ## Helpful Options
 
@@ -61,6 +61,7 @@ python3 main.py --start-task 8
 - `hint` shows a clue for the current mission.
 - `repeat` shows the mission again.
 - `progress` shows stars and mission progress.
+- `skills` shows mastery evidence and recommended reviews.
 - `reset` resets the current mission room.
 - `exit` leaves the game.
 
@@ -73,7 +74,21 @@ Validate the teaching order and run the tests with:
 ```sh
 python3 tools/validate_curriculum.py
 python3 -m unittest discover -s tests -v
+python3 tools/smoke_campaign.py
 ```
+
+The smoke test completes all 65 missions through the same game loop used by a player.
+
+## Documentation
+
+- [Product vision](docs/product-vision.md)
+- [Curriculum](docs/curriculum.md)
+- [Skill tree](docs/skill-tree.md)
+- [Architecture](docs/architecture.md)
+- [Mission design](docs/mission-design.md)
+- [Story bible](docs/story-bible.md)
+- [Contribution guide](docs/contribution-guide.md)
+- [Development phases](docs/development-phases.md)
 
 ## Prototype Files
 

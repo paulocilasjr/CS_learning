@@ -19,7 +19,7 @@ Every skill progresses through six observable mastery stages:
 | 4 | Transferred | The player used it in a meaningfully different situation. |
 | 5 | Integrated | The player combined it with other concepts to solve a larger problem. |
 
-Mastery is evidence, not a permanent badge. Future review scheduling should consider attempts, hints used, time since practice, and recent independent successes. Speed alone must not increase mastery.
+Mastery is evidence, not a permanent badge. The learning state records attempts, hints, time last practiced, and independent successes. The review engine prioritizes weaker and more help-dependent skills. Speed alone does not increase mastery.
 
 ## Mission types
 
@@ -71,17 +71,11 @@ Hints reveal information progressively:
 
 Using a hint is normal learning behavior. It should be recorded so the game can schedule another practice opportunity, not framed as failure.
 
-## Current playable slice
+## Current playable campaign
 
-The existing campaign has 20 single-command missions across three chapters. It currently teaches and revisits:
+The implemented campaign contains 65 missions in all 12 arcs. Every registered skill is introduced, earlier concepts return in recall and transfer situations, command composition culminates in a `COMBINE` mission, and the final chapter contains five outcome-based `CAPSTONE` missions.
 
-- current location and directory inspection;
-- relative, nested, parent, and absolute paths;
-- reading, creating, moving, and copying information;
-- targeted and hidden-file listing;
-- name search and hierarchy inspection.
-
-The current campaign reaches introduction, recall, and one transfer exercise. It does not yet include a multi-command `COMBINE` mission, an outcome-based capstone, mastery persistence, or review scheduling. Those are the next major learning-system milestones after this specification foundation.
+Programming is integrated with the virtual world through editable Python files and visible output. Deliberately broken programs establish expected-versus-actual reasoning, assertions provide automated tests, and a simulated repository teaches recoverable history without touching the player's real Git repositories.
 
 ## Content rules
 
@@ -92,4 +86,3 @@ The current campaign reaches introduction, recall, and one transfer exercise. It
 - Story copy never implements terminal behavior, and command code never contains plot progression.
 - Later open-ended missions validate output or final virtual-computer state rather than exact command text.
 - Destructive commands remain confined to the virtual filesystem.
-

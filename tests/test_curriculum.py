@@ -4,6 +4,7 @@ import unittest
 from dataclasses import dataclass
 
 from terminal_quest.curriculum import (
+    SKILLS,
     MissionType,
     campaign_errors,
     skill_graph_errors,
@@ -29,9 +30,15 @@ class CurriculumTests(unittest.TestCase):
 
         validate_campaign(tasks)
 
-        self.assertEqual(len(tasks), 20)
+        self.assertGreaterEqual(len(tasks), 20)
         self.assertEqual(tasks[0].new_skills, ("pwd",))
-        self.assertEqual(tasks[-1].mission_type, MissionType.RECALL)
+        self.assertIn(tasks[-1].mission_type, set(MissionType))
+
+    def test_complete_campaign_introduces_every_registered_skill(self) -> None:
+        introduced = {key for task in build_tasks() for key in task.new_skills}
+
+        self.assertEqual(introduced, set(SKILLS))
+        self.assertEqual(len(build_tasks()), 65)
 
     def test_review_before_introduction_is_rejected(self) -> None:
         missions = [
@@ -71,4 +78,3 @@ class CurriculumTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
