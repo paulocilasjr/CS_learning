@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import ast
 import io
+import os
+import sys
 import textwrap
 from contextlib import redirect_stdout
 from dataclasses import dataclass
@@ -23,6 +25,10 @@ from terminal_quest.version_control import VirtualRepository
 
 
 SAVE_FILE = Path(".star_wars_terminal_quest_progress.json")
+
+COMMAND_OUTPUT_COLOR = "\033[36m"
+COMMAND_ERROR_COLOR = "\033[31m"
+ANSI_RESET = "\033[0m"
 
 
 @dataclass
@@ -837,6 +843,22 @@ class TerminalQuestGame:
             if index != len(paragraphs) - 1:
                 print()
 
+    def _supports_color(self) -> bool:
+        return sys.stdout.isatty() and "NO_COLOR" not in os.environ
+
+    def _paint(self, text: str, color: str) -> str:
+        if not self._supports_color():
+            return text
+        return f"{color}{text}{ANSI_RESET}"
+
+    def _show_command_box(self, title: str, text: str, color: str) -> None:
+        lines = text.splitlines() or ["(no output)"]
+        print()
+        print(self._paint(f"+-- {title} --+", color))
+        for line in lines:
+            print(self._paint(f"| {line}", color))
+        print(self._paint(f"+-- END {title} --+", color))
+
     def _handle_meta_command(self, raw: str, task: Task, tip_index: int) -> str | None:
         command = raw.lower()
 
@@ -897,11 +919,11 @@ class TerminalQuestGame:
 
     def _show_result(self, result: CommandResult) -> None:
         if result.error:
-            print(f"\n{result.error}")
+            self._show_command_box("COMMAND ERROR", result.error, COMMAND_ERROR_COLOR)
             return
 
         if result.output:
-            print(f"\n{result.output}")
+            self._show_command_box("COMMAND OUTPUT", result.output, COMMAND_OUTPUT_COLOR)
 
     def _show_checkpoint(self, completed_task: Task) -> None:
         if self.current_index >= len(self.tasks):
