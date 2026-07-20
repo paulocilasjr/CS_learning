@@ -15,4 +15,4 @@ The original ten-phase roadmap is implemented as follows:
 | 9 | Safe simulated Git status, diff, staging, commits, logs, branches, switching, and merging. |
 | 10 | Five open-ended capstones validated by output and final state, including terminal, programming, debugging, and history work. |
 
-The Terminal CS campaign contains 66 missions across 12 chapters. A separate Picture Logic campaign adds 10 visual planning levels for younger learners. `tools/smoke_campaign.py` and `tools/smoke_picture_campaign.py` prove both complete golden paths through their real game loops.
+The Terminal CS campaign contains 66 missions across 12 chapters. A separate Picture Logic campaign adds 12 gradual, click-based visual planning levels for younger learners. `tools/smoke_campaign.py` and `tools/smoke_picture_campaign.py` prove both complete golden paths through their real execution engines.

@@ -17,6 +17,8 @@ def main() -> int:
     missions = build_picture_missions()
     commands: list[str] = []
     for mission in missions:
+        if mission.starter_plan:
+            commands.append("clear")
         commands.append(" ".join(str(mission.cards.index(action) + 1) for action in mission.solution))
         commands.append("run")
     command_iterator = iter(commands)
@@ -31,12 +33,12 @@ def main() -> int:
 
     if game.current_index != len(missions):
         raise RuntimeError(f"Stopped at picture mission index {game.current_index}.")
-    if game.stars != len(missions) * 3:
-        raise RuntimeError(f"Expected {len(missions) * 3} stars, received {game.stars}.")
+    if game.stars != len(missions):
+        raise RuntimeError(f"Expected {len(missions)} badges, received {game.stars}.")
     if not any("PICTURE ADVENTURE COMPLETE" in line for line in transcript):
         raise RuntimeError("Picture campaign did not reach its completion message.")
 
-    print(f"Picture campaign smoke test passed: {len(missions)} levels, {game.stars} stars.")
+    print(f"Picture campaign smoke test passed: {len(missions)} levels, {game.stars} badges.")
     return 0
 
 

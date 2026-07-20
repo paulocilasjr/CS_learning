@@ -201,9 +201,10 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-# Local progress files for the terminal tutorial game
+# Local progress files for the learning games
 .terminal_quest_progress.json
 .star_wars_terminal_quest_progress.json
+.star_wars_picture_logic_progress.json
 
 # Marimo
 marimo/_static/

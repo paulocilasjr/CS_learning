@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from game_core.planning import ExecutionPlan, PlanRunner
+from game_core.planning import ExecutionPlan, PlanRunner, PlanStepper
 
 
 class PlanningTests(unittest.TestCase):
@@ -60,6 +60,22 @@ class PlanningTests(unittest.TestCase):
 
         self.assertEqual(plan.undo(), latest)
         self.assertEqual([step.raw for step in plan.steps], ["first"])
+
+    def test_stepper_advances_one_operation_at_a_time(self) -> None:
+        plan = ExecutionPlan()
+        plan.add("first")
+        plan.add("second")
+        stepper = PlanStepper(plan, lambda raw: f"done:{raw}", lambda _result: False)
+
+        first = stepper.advance()
+
+        self.assertEqual(first.result, "done:first")
+        self.assertFalse(first.finished)
+        self.assertEqual(stepper.cursor, 1)
+        second = stepper.advance()
+        self.assertEqual(second.result, "done:second")
+        self.assertTrue(second.finished)
+        self.assertIsNone(stepper.advance())
 
 
 if __name__ == "__main__":

@@ -3,7 +3,13 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from game_core.planning import ExecutionPlan, PlanRunResult, PlanRunner, PlanStep
+from game_core.planning import (
+    ExecutionPlan,
+    PlanRunResult,
+    PlanStep,
+    PlanStepper,
+    PlanStepResult as CoreStepResult,
+)
 from picture_logic.missions import ACTION_CARDS, PictureMission, Position
 
 
@@ -97,6 +103,14 @@ class PictureWorld:
             rows.append(" ".join(cells))
         return "\n".join(rows)
 
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "position": list(self.position),
+            "facing": self.facing,
+            "remaining_stars": [list(position) for position in sorted(self.remaining_stars)],
+            "complete": self.complete,
+        }
+
     def _move_forward(self) -> str:
         dx, dy = DIRECTION_VECTORS[self.facing]
         destination = (self.position[0] + dx, self.position[1] + dy)
@@ -129,6 +143,29 @@ class PicturePlanResult:
         return self.run.completed and self.world.complete
 
 
+class PicturePlanSession:
+    """One animated attempt, advanced by a UI between visual frames."""
+
+    def __init__(self, mission: PictureMission, plan: ExecutionPlan) -> None:
+        self.world = PictureWorld(mission)
+        self.stepper = PlanStepper[PictureStepResult](
+            plan,
+            self.world.execute,
+            lambda result: bool(result.error),
+        )
+
+    @property
+    def finished(self) -> bool:
+        return self.stepper.finished
+
+    @property
+    def complete(self) -> bool:
+        return self.finished and self.stepper.stopped_at is None and self.world.complete
+
+    def advance(self) -> CoreStepResult[PictureStepResult] | None:
+        return self.stepper.advance()
+
+
 def run_picture_plan(
     mission: PictureMission,
     plan: ExecutionPlan,
@@ -136,21 +173,19 @@ def run_picture_plan(
     before_step: Callable[[PlanStep, int, int], None] | None = None,
     after_step: Callable[[PictureStepResult], None] | None = None,
 ) -> PicturePlanResult:
-    world = PictureWorld(mission)
-    runner = PlanRunner[PictureStepResult](lambda result: bool(result.error))
-
-    def execute(action: str) -> PictureStepResult:
-        result = world.execute(action)
-        if after_step is not None:
-            after_step(result)
-        return result
-
-    def announce(step: PlanStep, index: int, total: int) -> None:
+    session = PicturePlanSession(mission, plan)
+    results: list[PictureStepResult] = []
+    while not session.finished:
+        next_index = session.stepper.cursor + 1
         if before_step is not None:
-            before_step(step, index, total)
-
-    result = runner.run(plan, execute, before_step=announce)
-    return PicturePlanResult(world, result)
+            before_step(session.stepper.steps[next_index - 1], next_index, len(session.stepper.steps))
+        progress = session.advance()
+        assert progress is not None
+        results.append(progress.result)
+        if after_step is not None:
+            after_step(progress.result)
+    result = PlanRunResult(tuple(results), stopped_at=session.stepper.stopped_at)
+    return PicturePlanResult(session.world, result)
 
 
 def picture_for_action(action: str) -> str:

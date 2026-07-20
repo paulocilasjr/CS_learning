@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:;">
+  <title>BB-8 Picture Plan Adventure</title>
+  <style>__GAME_STYLE__</style>
+</head>
+<body>
+  <div class="stars" aria-hidden="true"></div>
+  <main id="app">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">BB-8 PICTURE PLAN ADVENTURE</div>
+        <h1 id="missionTitle">Loading mission…</h1>
+      </div>
+      <div class="top-actions">
+        <button id="speakButton" class="small-button" type="button">🔊 <span>READ TO ME</span></button>
+        <button id="restartButton" class="small-button parent-button" type="button">↺ <span>START OVER</span></button>
+        <button id="exitButton" class="small-button parent-button" type="button">✕ <span>LEAVE</span></button>
+      </div>
+    </header>
+
+    <section class="progress-wrap" aria-label="Game progress">
+      <div id="levelProgress" class="level-progress"></div>
+      <div id="badgeCount" class="badge-count">🏅 0</div>
+    </section>
+
+    <section class="thinking-path" aria-label="Thinking steps">
+      <div data-phase="look" class="thinking-step active"><b>1</b><span>👀 LOOK</span></div>
+      <div data-phase="plan" class="thinking-step"><b>2</b><span>🧩 PLAN</span></div>
+      <div data-phase="try" class="thinking-step"><b>3</b><span>▶ TRY</span></div>
+      <div data-phase="change" class="thinking-step"><b>4</b><span>🔧 CHANGE</span></div>
+    </section>
+
+    <section class="mission-strip">
+      <div class="mission-copy">
+        <span id="skillLabel" class="skill-label">ONE STEP</span>
+        <p id="storyText" class="story-text"></p>
+        <p id="instructionText" class="instruction-text"></p>
+      </div>
+      <div id="tryCounter" class="try-counter">🌱 Every try grows your brain!</div>
+    </section>
+
+    <section class="play-area">
+      <div class="board-card">
+        <div class="card-title"><span>THE BOARD</span><span class="legend">🤖 BB-8 &nbsp; 🏁 FINISH &nbsp; ⭐ SAVE &nbsp; 🪨 AVOID</span></div>
+        <div id="board" class="board" aria-label="Mission board"></div>
+      </div>
+
+      <aside class="coach-card">
+        <div id="coachFace" class="coach-face" aria-hidden="true">🤖</div>
+        <div>
+          <div class="coach-label">BB-8 SAYS</div>
+          <p id="feedback" class="feedback" aria-live="polite">First, look at the board.</p>
+        </div>
+        <button id="hintButton" class="hint-button" type="button">💡 GIVE ME A CLUE</button>
+      </aside>
+    </section>
+
+    <section class="builder-card">
+      <div class="builder-section">
+        <div class="card-title"><span>1. TAP PICTURE CARDS</span><span class="tiny-help">Tap a big card to add it</span></div>
+        <div id="cardTray" class="card-tray"></div>
+      </div>
+
+      <div class="builder-section plan-section">
+        <div class="card-title"><span>2. YOUR PLAN</span><span id="planCount" class="tiny-help">0 steps</span></div>
+        <div id="planTray" class="plan-tray" aria-label="Your picture plan"></div>
+        <div class="edit-actions">
+          <button id="undoButton" type="button" class="edit-button">↶ UNDO</button>
+          <button id="clearButton" type="button" class="edit-button">🧹 CLEAR</button>
+        </div>
+      </div>
+
+      <button id="tryButton" type="button" class="try-button">
+        <span class="try-icon">▶</span>
+        <span><b>3. TRY MY PLAN</b><small>Watch one step at a time</small></span>
+      </button>
+    </section>
+  </main>
+
+  <div id="celebration" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="celebration-icon">🏅</div>
+      <h2 id="celebrationTitle">You did it!</h2>
+      <p id="celebrationText"></p>
+      <div id="confetti" class="confetti" aria-hidden="true"></div>
+      <button id="nextButton" class="next-button" type="button">NEXT ADVENTURE ➜</button>
+    </div>
+  </div>
+
+  <div id="goodbye" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="celebration-icon">👋</div>
+      <h2>Great thinking today!</h2>
+      <p>Your picture-game progress is safe. You can close this browser tab.</p>
+    </div>
+  </div>
+
+  <script>window.GAME_CONFIG = __GAME_CONFIG__;</script>
+  <script>__GAME_SCRIPT__</script>
+</body>
+</html>

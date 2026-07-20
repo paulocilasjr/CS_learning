@@ -24,7 +24,7 @@ Register a handler and help definition in `TutorialShell`. Keep the grammar inte
 
 ## Adding picture behavior
 
-Add visual action cards and mission data under `picture_logic/`. Picture actions must remain command-free, execute through the shared `game_core.planning` runner, start each run from a deterministic board, and display the board after every consequence.
+Add visual action cards and mission data under `picture_logic/`. Picture actions must remain command-free, execute through the shared `game_core.planning` stepper, start each run from a deterministic board, and display the board after every consequence. Keep click targets large, text short, hints progressive, and rewards independent of attempts. Validate the browser flow and responsive layout as well as the Python engine.
 
 ## Quality expectations
 

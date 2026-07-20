@@ -2,7 +2,7 @@
 
 This project contains two separate Star Wars learning games connected by the same Plan-and-Run backbone:
 
-- **Picture Logic Game** for younger learners: choose emoji action cards, arrange a plan, run it, and watch BB-8 move through ten visual levels. No computer commands are required.
+- **Picture Logic Game** for approximately five-year-old learners: click large action cards, arrange a plan, and watch BB-8 carry it out one step at a time through twelve visual levels. No typing or computer commands are required.
 - **Terminal CS Game** for older learners: complete 66 missions covering terminal commands, programming, debugging, testing, version control, and independent problem solving.
 
 Every Terminal CS mission gives:
@@ -44,6 +44,8 @@ python3 main.py --game picture
 ```
 
 The games store progress independently. Resetting one selected game does not erase the other game's save.
+
+The Picture Logic Game opens in the default web browser and runs through a private local connection to the Python Plan-and-Run engine. It does not use the Internet. Keep the launching terminal open while playing, then use the game's **Leave** button when finished.
 
 ## Terminal CS Campaign
 
@@ -91,12 +93,13 @@ python3 main.py --game picture --no-save --start-level 4
 
 ## Picture Logic Controls
 
-- Number keys add the picture cards shown on screen.
-- `run` executes the complete picture plan.
-- `show`, `undo`, and `clear` help revise the plan.
-- `hint` gives a level clue.
-- `board` repeats the starting board.
-- `exit` leaves the picture game.
+- Click a large picture card to add it to the plan.
+- Click a plan card to remove that exact step.
+- **Undo** and **Clear** help revise the plan.
+- **Try My Plan** animates one step at a time.
+- **Give Me a Clue** reveals gradual guidance without reducing the reward.
+- **Read to Me** speaks the short mission instructions aloud when the browser supports speech.
+- Every completed level earns one thinking badge, no matter how many tries it takes.
 
 ## Curriculum Development
 
@@ -111,7 +114,7 @@ python3 tools/smoke_campaign.py
 python3 tools/smoke_picture_campaign.py
 ```
 
-The smoke tests complete all 66 terminal missions and all 10 picture levels through the same game loops used by players.
+The smoke tests complete all 66 terminal missions and all 12 picture levels through the same Plan-and-Run engines used by players.
 
 ## Documentation
 

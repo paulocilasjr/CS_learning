@@ -60,6 +60,65 @@ class PlanRunResult(Generic[ResultT]):
         return self.step_results[-1] if self.step_results else None
 
 
+@dataclass(frozen=True)
+class PlanStepResult(Generic[ResultT]):
+    step: PlanStep
+    result: ResultT
+    index: int
+    total: int
+    stopped: bool
+    finished: bool
+
+
+class PlanStepper(Generic[ResultT]):
+    """Advance a fixed plan one operation at a time.
+
+    Animated interfaces use ``advance`` between visual frames. ``PlanRunner``
+    uses the same stepper synchronously, keeping both execution modes aligned.
+    """
+
+    def __init__(
+        self,
+        plan: ExecutionPlan,
+        execute: Callable[[str], ResultT],
+        has_error: Callable[[ResultT], bool],
+        *,
+        before_step: Callable[[PlanStep, int, int], None] | None = None,
+    ) -> None:
+        self.steps = tuple(plan.steps)
+        self.execute = execute
+        self.has_error = has_error
+        self.before_step = before_step
+        self.cursor = 0
+        self.stopped_at: int | None = None
+
+    @property
+    def finished(self) -> bool:
+        return self.stopped_at is not None or self.cursor >= len(self.steps)
+
+    def advance(self) -> PlanStepResult[ResultT] | None:
+        if self.finished:
+            return None
+        step = self.steps[self.cursor]
+        index = self.cursor + 1
+        total = len(self.steps)
+        if self.before_step is not None:
+            self.before_step(step, index, total)
+        result = self.execute(step.raw)
+        self.cursor = index
+        stopped = self.has_error(result)
+        if stopped:
+            self.stopped_at = index
+        return PlanStepResult(
+            step=step,
+            result=result,
+            index=index,
+            total=total,
+            stopped=stopped,
+            finished=self.finished,
+        )
+
+
 class PlanRunner(Generic[ResultT]):
     def __init__(self, has_error: Callable[[ResultT], bool]) -> None:
         self.has_error = has_error
@@ -72,12 +131,9 @@ class PlanRunner(Generic[ResultT]):
         before_step: Callable[[PlanStep, int, int], None] | None = None,
     ) -> PlanRunResult[ResultT]:
         results: list[ResultT] = []
-        total = len(plan.steps)
-        for index, step in enumerate(plan.steps, start=1):
-            if before_step is not None:
-                before_step(step, index, total)
-            result = execute(step.raw)
-            results.append(result)
-            if self.has_error(result):
-                return PlanRunResult(tuple(results), stopped_at=index)
-        return PlanRunResult(tuple(results))
+        stepper = PlanStepper(plan, execute, self.has_error, before_step=before_step)
+        while not stepper.finished:
+            progress = stepper.advance()
+            assert progress is not None
+            results.append(progress.result)
+        return PlanRunResult(tuple(results), stopped_at=stepper.stopped_at)

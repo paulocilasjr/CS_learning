@@ -1,6 +1,6 @@
 # Product Vision
 
-The project is a two-game learning path. The Picture Logic Game introduces approximately five-year-old learners to planning with visual action cards and consequences. The Terminal CS Game develops the same reasoning through commands and code for approximately eight-year-old learners.
+The project is a two-game learning path. The Picture Logic Game introduces approximately five-year-old learners to planning through direct manipulation, visual action cards, animated consequences, and supportive trial-and-error. The Terminal CS Game develops the same reasoning through commands and code for approximately eight-year-old learners.
 
 The product is not successful merely when a child can copy `ls` or memorize Python syntax. It is successful when the child can inspect an unfamiliar state, describe the problem in smaller parts, choose an appropriate tool, observe the result, adjust a mistaken assumption, and combine earlier ideas into a solution.
 
